@@ -20,7 +20,12 @@
 
 ;;; Commentary:
 
-;; TODO
+;; Find the definition of the symbol at point, intelligently.
+;;
+;; TODO: variables
+;; TODO: features (require/provide)
+;; TODO: macro-expand and work out what bindings we are in.
+;; TODO: flash the symbol when we go to definition.
 
 ;;; Code:
 
