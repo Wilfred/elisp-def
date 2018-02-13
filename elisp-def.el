@@ -164,6 +164,7 @@ Note that macros are in the same namespace as functions."
 
     (-let [(buf pos) (elisp-def--find-global sym (eq namespace 'function))]
       (unless (and buf pos)
+        ;; todo: mention if it's due to being a primitive
         (user-error "Could not find definition for %s %s"
                     namespace sym))
 
