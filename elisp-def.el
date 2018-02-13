@@ -25,13 +25,18 @@
 ;; TODO: variables
 ;; TODO: features (require/provide)
 ;; TODO: macro-expand and work out what bindings we are in.
-;; TODO: flash the symbol when we go to definition.
 
 ;;; Code:
 
 (require 'dash)
 (require 'f)
 (require 'find-func)
+
+(defun elisp-def--flash-region (start end)
+  "Temporarily highlight region from START to END."
+  (let ((overlay (make-overlay start end)))
+    (overlay-put overlay 'face 'highlight)
+    (run-with-timer 0.5 nil 'delete-overlay overlay)))
 
 (defun elisp-def--find-library-name (path)
   "A wrapper around `find-library-name' that returns nil if PATH
@@ -115,8 +120,15 @@ source code: they have e.g. org.elc but no org.el."
   (-let* ((sym (symbol-at-point))
           ((buf pos) (elisp-def--find-global sym t)))
     (switch-to-buffer buf)
-    ;; TODO: It would be nice to flash the symbol name too.
-    (goto-char pos)))
+    (goto-char pos)
+    ;; POS is actually the start of line where SYM is defined. Work
+    ;; out the exact position of SYM, and flash it.
+    (let (start-pos end-pos)
+      (save-excursion
+        (search-forward (symbol-name sym))
+        (setq end-pos (point))
+        (setq start-pos (- end-pos (length (symbol-name sym)))))
+      (elisp-def--flash-region start-pos end-pos))))
 
 ;; Overriding xref-find-definitions.
 (global-set-key (kbd "M-.") #'elisp-def)
