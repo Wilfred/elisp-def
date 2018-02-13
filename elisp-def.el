@@ -22,13 +22,14 @@
 
 ;; Find the definition of the symbol at point, intelligently.
 ;;
-;; TODO: variables
 ;; TODO: features (require/provide)
 ;; TODO: macro-expand and work out what bindings we are in.
+;; TODO: fonts
 
 ;;; Code:
 
 (require 'dash)
+(require 's)
 (require 'f)
 (require 'find-func)
 
@@ -114,20 +115,69 @@ source code: they have e.g. org.elc but no org.el."
         (error nil))))
     (list buf pos)))
 
+(defun elisp-def--namespaces (sym)
+  "All the namespaces that SYM is globally defined in.
+Returns a list '(function variable).
+
+Note that macros are in the same namespace as functions."
+  (let (result)
+    (when (boundp sym)
+      (push 'variable result))
+    ;; Function or macro.
+    (when (fboundp sym)
+      (push 'function result))
+    result))
+
+(defun elisp-def--join-and (items)
+  "Join a list of strings with commas and \"and\"."
+  (cond
+   ((= (length items) 0)
+    "")
+   ((= (length items) 1)
+    (car items))
+   (t
+    (format "%s and %s"
+            (s-join ", " (-drop-last 1 items))
+            (-last-item items)))))
+
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
   (-let* ((sym (symbol-at-point))
-          ((buf pos) (elisp-def--find-global sym t)))
-    (switch-to-buffer buf)
-    (goto-char pos)
+          (sym-name (symbol-name sym))
+          (namespaces (elisp-def--namespaces sym))
+          (namespace nil))
+    (if (> (length namespaces) 1)
+        ;; User chooses.
+        (let* ((formatted-namespaces
+                (elisp-def--join-and
+                 (--map (format "a %s" it) namespaces)))
+               (prompt (format "%s is %s, choose: "
+                               sym-name
+                               formatted-namespaces)))
+          (setq namespace
+                (intern
+                 (completing-read prompt namespaces nil t))))
+
+      ;; This symbol is only bound in one namespace.
+      (setq namespace (car namespaces)))
+
+    (-let [(buf pos) (elisp-def--find-global sym (eq namespace 'function))]
+      (unless (and buf pos)
+        (user-error "Could not find definition for %s %s"
+                    namespace sym))
+
+      (switch-to-buffer buf)
+      (goto-char pos))
+    ;; TODO: push position so we can pop.
+
     ;; POS is actually the start of line where SYM is defined. Work
     ;; out the exact position of SYM, and flash it.
     (let (start-pos end-pos)
       (save-excursion
-        (search-forward (symbol-name sym))
+        (search-forward sym-name)
         (setq end-pos (point))
-        (setq start-pos (- end-pos (length (symbol-name sym)))))
+        (setq start-pos (- end-pos (length sym-name))))
       (elisp-def--flash-region start-pos end-pos))))
 
 ;; Overriding xref-find-definitions.
