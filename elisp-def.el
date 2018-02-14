@@ -145,14 +145,14 @@ Note that macros are in the same namespace as functions."
     (-let [(sym-start . _sym-end) (bounds-of-thing-at-point 'symbol)]
       (when sym-start
         (goto-char sym-start)
-        (backward-char 2)
+        (condition-case _e
+            (backward-char 2)
+          (beginning-of-buffer nil))
         (looking-at (rx "#'"))))))
 
 (defun elisp-def--namespace-at-point ()
   "Is the symbol at point a function/macro, a global variable, a
 quoted variable, or a let-bound variable?"
-  ;; TODO: let bound variables.
-
   ;; If it's a sharp quoted symbol, we know it's a global function
   ;; reference.
   (if (elisp-def--sharp-quoted-p)
@@ -163,8 +163,27 @@ quoted variable, or a let-bound variable?"
            (form (read src))
            (expanded-form (macroexpand-all form))
            (use (elisp-def--find-use expanded-form 'elisp-def--placeholder)))
-      (setq wh/f expanded-form)
       use)))
+
+(ert-deftest elisp-def--namespace-at-point ()
+  ;; If it's the head of a sexp, this is a function.
+  (with-temp-buffer
+    (insert "(foo bar)")
+
+    (goto-char (point-min))
+    (search-forward "foo")
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'function)))
+  ;; If it's an argument to a function, it's a variable.
+  (with-temp-buffer
+    (insert "(foo bar)")
+
+    (goto-char (point-min))
+    (search-forward "bar")
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'variable))))
 
 (defun elisp-def--find-use (form sym &optional quoted)
   "Is SYM being used as a function, a variable, or a quoted
