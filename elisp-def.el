@@ -161,8 +161,17 @@ quoted variable, or a let-bound variable?"
     ;; symbol is used.
     (let* ((src (elisp-def--source-with-placeholder))
            (form (read src))
+           ;; TODO: what if SYM disappears after expanding? E.g. inside rx.
            (expanded-form (macroexpand-all form))
            (use (elisp-def--use-position expanded-form 'elisp-def--placeholder)))
+      ;; If it's being used as a variable, see if it's let-bound.
+      (when (eq use 'variable)
+        (let* ((sym (symbol-at-point))
+               (bound-syms (elisp-def--bound-syms
+                            ;; TODO: factor out the placeholder symbol.
+                            expanded-form 'elisp-def--placeholder)))
+          (when (memq sym bound-syms)
+            (setq use 'bound))))
       use)))
 
 (ert-deftest elisp-def--namespace-at-point ()
@@ -183,7 +192,51 @@ quoted variable, or a let-bound variable?"
     (search-forward "bar")
     (should
      (eq (elisp-def--namespace-at-point)
-         'variable))))
+         'variable)))
+  ;; Handle let-bound variables.
+  (with-temp-buffer
+    (insert "(let ((x 1)) (1+ x))")
+
+    (goto-char (point-min))
+    (search-forward "1+")
+    (search-forward "x")
+
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'bound)))
+  ;; Handle let-bound variables introduced by macros.
+  (with-temp-buffer
+    (insert "(destructuring-bind (x y) z (1+ x))")
+
+    (goto-char (point-min))
+    (search-forward "1+")
+    (search-forward "x")
+
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'bound)))
+  ;; Handle function parameters.
+  (with-temp-buffer
+    (insert "(defun foo (x) (1+ x))")
+
+    (goto-char (point-min))
+    (search-forward "1+")
+    (search-forward "x")
+
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'bound)))
+  ;; Handle binding introduced by condition-case.
+  (with-temp-buffer
+    (insert "(condition-case e (foo) (error e))")
+
+    (goto-char (point-min))
+    (search-forward "error")
+    (search-forward "e")
+
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'bound))))
 
 ;; TODO: handle declarations, which aren't usages at all.
 ;; (let ((FOO ...))) or (lambda (FOO) ...)
@@ -271,7 +324,7 @@ but with the symbol itself replaced by a placeholder."
             (-last-item items)))))
 
 (defun elisp-def--bound-syms (form sym &optional accum)
-  "Return a list of bound symbols around the symbol XXX in FORM.
+  "Return a list of bound symbols around the symbol SYM in FORM.
 
 Assumes FORM has been fully macro-expanded."
   (catch 'done
