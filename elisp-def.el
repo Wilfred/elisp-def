@@ -572,7 +572,7 @@ Assumes FORM has been fully macro-expanded."
       (elisp-def--flash-region start-pos end-pos))))
 
 ;; Overriding xref-find-definitions.
-(global-set-key (kbd "M-.") #'elisp-def)
+(define-key lisp-mode-map (kbd "M-.") #'elisp-def)
 
 (provide 'elisp-def)
 ;;; elisp-def.el ends here
