@@ -162,7 +162,7 @@ quoted variable, or a let-bound variable?"
     (let* ((src (elisp-def--source-with-placeholder))
            (form (read src))
            (expanded-form (macroexpand-all form))
-           (use (elisp-def--find-use expanded-form 'elisp-def--placeholder)))
+           (use (elisp-def--use-position expanded-form 'elisp-def--placeholder)))
       use)))
 
 (ert-deftest elisp-def--namespace-at-point ()
@@ -185,9 +185,11 @@ quoted variable, or a let-bound variable?"
      (eq (elisp-def--namespace-at-point)
          'variable))))
 
-(defun elisp-def--find-use (form sym &optional quoted)
-  "Is SYM being used as a function, a variable, or a quoted
-symbol in FORM?
+;; TODO: handle declarations, which aren't usages at all.
+;; (let ((FOO ...))) or (lambda (FOO) ...)
+(defun elisp-def--use-position (form sym &optional quoted)
+  "Is SYM being used as a function, a global variable, or a
+quoted symbol in FORM?
 
 Assumes FORM has been macro-expanded."
   (cond
@@ -204,30 +206,30 @@ Assumes FORM has been macro-expanded."
       (if quoted 'quoted 'function))
      ;; See if this is a quoted form that contains SYM.
      ((eq (car form) 'quote)
-      (--any (elisp-def--find-use it sym t) (cdr form)))
+      (--any (elisp-def--use-position it sym t) (cdr form)))
      ;; Recurse on the form to see if any arguments contain SYM.
      (t
-      (--any (elisp-def--find-use it sym quoted) form))))
+      (--any (elisp-def--use-position it sym quoted) form))))
    ((vectorp form)
     ;; All elements in a vector are quoted.
-    (--any (elisp-def--find-use it sym t)
+    (--any (elisp-def--use-position it sym t)
            (mapcar #'identity form)))))
 
-(ert-deftest elisp-def--find-use ()
+(ert-deftest elisp-def--use-position ()
   (should
-   (eq (elisp-def--find-use '(foo bar) 'foo)
+   (eq (elisp-def--use-position '(foo bar) 'foo)
        'function))
   (should
-   (eq (elisp-def--find-use '(foo bar) 'bar)
+   (eq (elisp-def--use-position '(foo bar) 'bar)
        'variable))
   (should
-   (eq (elisp-def--find-use [foo] 'foo)
+   (eq (elisp-def--use-position [foo] 'foo)
        'quoted))
   (should
-   (eq (elisp-def--find-use '(foo '(bar)) 'bar)
+   (eq (elisp-def--use-position '(foo '(bar)) 'bar)
        'quoted))
   (should
-   (eq (elisp-def--find-use '(let ((foo (bar)))) 'bar)
+   (eq (elisp-def--use-position '(let ((foo (bar)))) 'bar)
        'function)))
 
 (defun elisp-def--source-with-placeholder ()
