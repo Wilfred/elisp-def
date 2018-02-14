@@ -536,6 +536,10 @@ Assumes FORM has been fully macro-expanded."
     ;; namespaces this symbol is bound in.
     (when (eq namespace 'quoted)
       (-let [namespaces (elisp-def--defined-in sym)]
+        (when (null namespaces)
+          (user-error "Could not identify where %s is defined"
+                      sym-name))
+
         ;; If the symbol is only bound in one namespace, use that.
         (if (= (length namespaces) 1)
             (setq namespace (car namespaces))
