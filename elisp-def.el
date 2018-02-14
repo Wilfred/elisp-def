@@ -249,6 +249,208 @@ but with the symbol itself replaced by a placeholder."
             (s-join ", " (-drop-last 1 items))
             (-last-item items)))))
 
+(defun elisp-def--bound-syms (form sym &optional accum)
+  "Return a list of bound symbols around the symbol XXX in FORM.
+
+Assumes FORM has been fully macro-expanded."
+  (catch 'done
+    ;; If we've hit the symbol we're looking for, we can return the
+    ;; bound symbols we found.
+    (when (eq form sym)
+      (throw 'done accum))
+
+    (when (consp form)
+      (let (bindings-found)
+        ;; If this is a lambda form, the enclosed forms have the parameters
+        ;; too.
+        (cond
+         ((eq (car form) 'lambda)
+          (-let [(_ args . body) form]
+            (setq args
+                  (--remove (member it '(&optional &rest)) args))
+            (setq bindings-found
+                  (--map (elisp-def--bound-syms it sym (append accum args))
+                         body))))
+         ;; (let ((x y)) z)
+         ;; We know that x is bound when we evaluate z, but not when we
+         ;; evaluate y.
+         ((eq (car form) 'let)
+          (-let* (((_ var-vals . body) form)
+                  (vars nil))
+            (--each var-vals
+              (if (consp it)
+                  (-let [(var val) it]
+                    (when (eq var 'XXX)
+                      (throw 'done accum))
+                    ;; `x' will be bound in the body.
+                    (push var vars)
+                    ;; `y' will be evaluated without `x' bound.
+                    (push (elisp-def--bound-syms val sym accum)
+                          bindings-found))
+                ;; Otherwise, a variable without a binding, like `z' in
+                ;; our example.
+                (when (eq it 'XXX)
+                  (throw 'done accum))
+                (push it vars)))
+            (setq vars (nreverse vars))
+            (setq bindings-found
+                  (append
+                   (nreverse bindings-found)
+                   (--map (elisp-def--bound-syms it sym (append accum vars))
+                          body)))))
+         ;; Handle `let*' forms, including bindings introduced by
+         ;; previous vars.
+         ((eq (car form) 'let*)
+          (-let* (((_ var-vals . body) form)
+                  (accum-with-vars accum)
+                  (vars nil))
+            (--each var-vals
+              ;; E.g. (let* ((x a) (y b) z) c)
+              (if (consp it)
+                  (-let [(var val) it]
+                    (when (eq var 'XXX)
+                      (throw 'done accum))
+                    ;; `x' will be bound in the body.
+                    (push var vars)
+                    ;; `a' will be evaluated without `x' bound.
+                    (push (elisp-def--bound-syms val sym accum-with-vars)
+                          bindings-found)
+                    ;; `x' will be bound when evaluating `b' on the next
+                    ;; iteration.
+                    (setq accum-with-vars
+                          (append accum-with-vars (list var))))
+                ;; Otherwise, a variable without a binding, like `z' in
+                ;; our example.
+                (when (eq it 'XXX)
+                  (throw 'done accum))
+                (push it vars)))
+            (setq vars (nreverse vars))
+            (setq bindings-found
+                  (append
+                   (nreverse bindings-found)
+                   (--map (elisp-def--bound-syms it sym (append accum vars))
+                          body)))))
+         ;; Handle `condition-case', the only other special form that
+         ;; can introduce bindings.
+         ((eq (car form) 'condition-case)
+          (-let [(_ var bodyform . handlers) form]
+            (when (eq var 'XXX)
+              (throw 'done accum))
+            (setq bindings-found
+                  (cons
+                   (elisp-def--bound-syms bodyform sym accum)
+                   (--map (elisp-def--bound-syms it sym (append accum (list var)))
+                          handlers)))))
+
+         ;; For other forms (`progn' etc) then just recurse to see if it
+         ;; contains XXX. We know that it introduces no new bindings. It is
+         ;; actually possible to introduce a global with `setq', but we
+         ;; ignore that.
+         (t
+          (setq bindings-found
+                (--map (elisp-def--bound-syms it sym accum)
+                       form))))
+
+        ;; For any sublist that didn't contain XXX, we will have
+        ;; returned nil. Find the non-empty list, if any.
+        (-first #'consp bindings-found)))))
+
+(ert-deftest elisp-def--bound-syms--lambda ()
+  (should
+   (equal
+    (elisp-def--bound-syms '(lambda (x y) XXX) 'XXX)
+    (list 'x 'y)))
+  (should
+   (equal
+    (elisp-def--bound-syms '(lambda (x &optional y &rest z) XXX) 'XXX)
+    (list 'x 'y 'z))))
+
+(ert-deftest elisp-def--bound-syms--let ()
+  ;; Handle bindings introduced by let.
+  (should
+   (equal
+    (elisp-def--bound-syms '(let (x y) XXX) 'XXX)
+    (list 'x 'y)))
+  (should
+   (equal
+    (elisp-def--bound-syms '(let ((x 1) (y)) XXX)  'XXX)
+    (list 'x 'y)))
+  ;; Don't consider previous bindings in the same let.
+  (should
+   (equal
+    (elisp-def--bound-syms
+     '(let ((x 1))
+        (let ((y 2)
+              (z (+ XXX 1)))
+          2))
+     'XXX)
+    (list 'x)))
+  ;; If our placeholder is in the variable position, still consider
+  ;; previous keybindings.
+  (should
+   (equal
+    (elisp-def--bound-syms
+     '(let ((x 1))
+        (let (XXX)
+          3))
+     'XXX)
+    (list 'x)))
+  (should
+   (equal
+    (elisp-def--bound-syms
+     '(let ((x 1))
+        (let ((XXX 2))
+          3))
+     'XXX)
+    (list 'x))))
+
+(ert-deftest elisp-def--bound-syms--let* ()
+  (should
+   (equal
+    (elisp-def--bound-syms '(let* (x y) XXX) 'XXX)
+    (list 'x 'y)))
+  (should
+   (equal
+    (elisp-def--bound-syms '(let* ((x 1) (y)) XXX)  'XXX)
+    (list 'x 'y)))
+  (should
+   (equal
+    (elisp-def--bound-syms
+     '(let ((x 1))
+        (let* ((y 2)
+               (z (+ XXX 1)))
+          2))
+     'XXX)
+    (list 'x 'y)))
+  (should
+   (equal
+    (elisp-def--bound-syms
+     '(let* ((x 1))
+        (let* ((XXX 2))
+          3))
+     'XXX)
+    (list 'x))))
+
+(ert-deftest elisp-def--bound-syms--condition-case ()
+  (should
+   (equal
+    (elisp-def--bound-syms
+     '(condition-case x (XXX) y)
+     'XXX)
+    nil))
+  (should
+   (equal
+    (elisp-def--bound-syms
+     '(condition-case x y (XXX))
+     'XXX)
+    (list 'x))))
+
+(ert-deftest elisp-def--bound-syms--progn ()
+  (should
+   (equal
+    (elisp-def--bound-syms '(progn (x y) XXX) 'XXX)
+    nil)))
+
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
