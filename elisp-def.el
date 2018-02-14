@@ -46,7 +46,7 @@ has no library with that name.
 
 This can happen when users have installed Emacs without its
 source code: they have e.g. org.elc but no org.el."
-  (condition-case _err
+  (condition-case nil
       (find-library-name path)
     (error nil)))
 
@@ -104,7 +104,7 @@ source code: they have e.g. org.elc but no org.el."
           (setq buf (marker-buffer marker))
           (setq pos (marker-position marker)))))
      ((not callable-p)
-      (condition-case _err
+      (condition-case nil
           (-let [(sym-buf . sym-pos) (find-definition-noselect sym 'defvar)]
             (setq buf sym-buf)
             (setq pos sym-pos))
@@ -145,7 +145,7 @@ Note that macros are in the same namespace as functions."
     (-let [(sym-start . _sym-end) (bounds-of-thing-at-point 'symbol)]
       (when sym-start
         (goto-char sym-start)
-        (condition-case _e
+        (condition-case nil
             (backward-char 2)
           (beginning-of-buffer nil))
         (looking-at (rx "#'"))))))
