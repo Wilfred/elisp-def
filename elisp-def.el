@@ -551,6 +551,9 @@ Assumes FORM has been fully macro-expanded."
                   (intern
                    (completing-read prompt namespaces nil t)))))))
 
+    ;; Push the current position, so we can go back.
+    (xref-push-marker-stack)
+
     (-let [(buf pos) (elisp-def--find-global sym (eq namespace 'function))]
       (unless (and buf pos)
         ;; todo: mention if it's due to being a primitive
@@ -559,7 +562,6 @@ Assumes FORM has been fully macro-expanded."
 
       (switch-to-buffer buf)
       (goto-char pos))
-    ;; TODO: push position so we can pop.
 
     ;; POS is actually the start of line where SYM is defined. Work
     ;; out the exact position of SYM, and flash it.
