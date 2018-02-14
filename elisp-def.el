@@ -565,7 +565,8 @@ Assumes FORM has been fully macro-expanded."
     ;; out the exact position of SYM, and flash it.
     (let (start-pos end-pos)
       (save-excursion
-        (search-forward sym-name)
+        (re-search-forward
+         (rx-to-string `(seq symbol-start ,sym-name symbol-end)))
         (setq end-pos (point))
         (setq start-pos (- end-pos (length sym-name))))
       (elisp-def--flash-region start-pos end-pos))))
