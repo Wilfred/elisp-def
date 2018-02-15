@@ -22,9 +22,9 @@
 
 ;; Find the definition of the symbol at point, intelligently.
 ;;
-;; TODO: features (require/provide)
 ;; TODO: macro-expand and work out what bindings we are in.
 ;; TODO: fonts
+;; TODO: jump to definition of 'foo even when point is on '.
 
 ;;; Code:
 
@@ -40,14 +40,14 @@
     (overlay-put overlay 'face 'highlight)
     (run-with-timer 0.5 nil 'delete-overlay overlay)))
 
-(defun elisp-def--find-library-name (path)
+(defun elisp-def--find-library-name (library)
   "A wrapper around `find-library-name' that returns nil if PATH
 has no library with that name.
 
 This can happen when users have installed Emacs without its
 source code: they have e.g. org.elc but no org.el."
   (condition-case nil
-      (find-library-name path)
+      (find-library-name library)
     (error nil)))
 
 (defun elisp-def--primitive-p (sym callable-p)
@@ -59,24 +59,49 @@ source code: they have e.g. org.elc but no org.el."
           (and (stringp filename)
                (equal (file-name-extension filename) "c"))))))
 
-(defun elisp-def--find-global (sym callable-p)
-  "Find the buffer and position where SYM is globally defined."
-  (let ((primitive-p (elisp-def--primitive-p sym callable-p))
-        (path nil)
-        (buf nil)
-        (pos nil))
-    (when callable-p
-      (-let [(base-sym . src-path) (find-function-library sym)]
-        ;; `base-sym' is the underlying symbol if `sym' is an alias.
-        (setq sym base-sym)
-        (setq path src-path)))
+(defun elisp-def--find-feature (sym)
+  "Find the buffer and position where feature SYM is defined."
+  (let ((path (elisp-def--find-library-name (symbol-name sym)))
+        buf pos)
+    (when path
+      (setq buf (find-file-noselect path))
+      (with-current-buffer buf
+        (save-excursion
+          (save-restriction
+            ;; TODO: caller should widen if necessary.
+            (widen)
+
+            (goto-char (point-min))
+            (re-search-forward
+             (rx-to-string
+              `(seq "("
+                    (0+ whitespace)
+                    symbol-start "provide" symbol-end
+                    (1+ whitespace)
+                    "'" (0+ whitespace)
+                    ,(symbol-name sym)))
+             nil
+             t)
+            (setq pos (line-beginning-position))))))
+    (list buf pos)))
+
+(defun elisp-def--find-function (sym)
+  "Find the buffer and position where function SYM is defined.
+
+This is the function _slot_ of SYM, so SYM may be a function or macro."
+  (let ((primitive-p (elisp-def--primitive-p sym t))
+        path buf pos)
+    (-let [(base-sym . src-path) (find-function-library sym)]
+      ;; `base-sym' is the underlying symbol if `sym' is an alias.
+      (setq sym base-sym)
+      (setq path src-path))
     (when (and primitive-p path find-function-C-source-directory)
       ;; Convert "src/foo.c" to "".
       (setq path (f-expand path
                            (f-parent find-function-C-source-directory))))
 
     (cond
-     ((and callable-p path)
+     (path
       ;; Convert foo.elc to foo.el.
       (-when-let (src-path (elisp-def--find-library-name path))
         ;; Open `path' ourselves, so we can widen before searching.
@@ -94,7 +119,7 @@ source code: they have e.g. org.elc but no org.el."
           (when (or (< pos (point-min))
                     (> pos (point-max)))
             (widen)))))
-     (callable-p
+     (t
       ;; Functions defined interactively may have an edebug property
       ;; that contains the location of the definition.
       (-when-let (edebug-info (get sym 'edebug))
@@ -102,18 +127,22 @@ source code: they have e.g. org.elc but no org.el."
                           (car edebug-info)
                         edebug-info)]
           (setq buf (marker-buffer marker))
-          (setq pos (marker-position marker)))))
-     ((not callable-p)
-      (condition-case nil
-          (-let [(sym-buf . sym-pos) (find-definition-noselect sym 'defvar)]
-            (setq buf sym-buf)
-            (setq pos sym-pos))
-        (search-failed nil)
-        ;; If your current Emacs instance doesn't match the source
-        ;; code configured in find-function-C-source-directory, we can
-        ;; get an error about not finding source. Try
-        ;; `default-tab-width' against Emacs trunk.
-        (error nil))))
+          (setq pos (marker-position marker))))))
+    (list buf pos)))
+
+(defun elisp-def--find-variable (sym)
+  "Find the buffer and position where variable SYM is defined."
+  (let (buf pos)
+    (condition-case nil
+        (-let [(sym-buf . sym-pos) (find-definition-noselect sym 'defvar)]
+          (setq buf sym-buf)
+          (setq pos sym-pos))
+      (search-failed nil)
+      ;; If your current Emacs instance doesn't match the source
+      ;; code configured in find-function-C-source-directory, we can
+      ;; get an error about not finding source. Try
+      ;; `default-tab-width' against Emacs trunk.
+      (error nil))
     (list buf pos)))
 
 (defun elisp-def--defined-in (sym)
@@ -236,13 +265,33 @@ quoted variable, or a let-bound variable?"
 
     (should
      (eq (elisp-def--namespace-at-point)
-         'bound))))
+         'bound)))
+  ;; Quoted references.
+  (with-temp-buffer
+    (insert "(foo 'bar)")
+
+    (goto-char (point-min))
+    (search-forward "bar")
+
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'quoted)))
+  ;; Handle references to libraries.
+  (with-temp-buffer
+    (insert "(require 'foo)")
+
+    (goto-char (point-min))
+    (search-forward "foo")
+
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'library))))
 
 ;; TODO: handle declarations, which aren't usages at all.
 ;; (let ((FOO ...))) or (lambda (FOO) ...)
 (defun elisp-def--use-position (form sym &optional quoted)
-  "Is SYM being used as a function, a global variable, or a
-quoted symbol in FORM?
+  "Is SYM being used as a function, a global variable, a
+library/feature, or a quoted symbol in FORM?
 
 Assumes FORM has been macro-expanded."
   (cond
@@ -257,6 +306,10 @@ Assumes FORM has been macro-expanded."
      ((eq (car form) sym)
       ;; Function call for the symbol we're looking for.
       (if quoted 'quoted 'function))
+     ;; Explicit call to `require'.
+     ((and (eq (car form) 'require)
+           (equal (car-safe (cdr form)) `(quote ,sym)))
+      'library)
      ;; See if this is a quoted form that contains SYM.
      ((eq (car form) 'quote)
       (--any (elisp-def--use-position it sym t) (cdr form)))
@@ -558,7 +611,16 @@ Assumes FORM has been fully macro-expanded."
     ;; Push the current position, so we can go back.
     (xref-push-marker-stack)
 
-    (-let [(buf pos) (elisp-def--find-global sym (eq namespace 'function))]
+    (-let [(buf pos)
+           (cond
+            ((eq namespace 'library)
+             (elisp-def--find-feature sym))
+            ((eq namespace 'variable)
+             (elisp-def--find-variable sym))
+            ;; TODO: is treating quoted symbols as functions always
+            ;; correct?
+            ((memq namespace '(function quoted))
+             (elisp-def--find-function sym)))]
       (unless (and buf pos)
         ;; todo: mention if it's due to being a primitive
         (user-error "Could not find definition for %s %s"
