@@ -590,7 +590,7 @@ Assumes FORM has been fully macro-expanded."
     (when (eq namespace 'quoted)
       (-let [namespaces (elisp-def--defined-in sym)]
         (when (null namespaces)
-          (user-error "Could not identify where %s is defined"
+          (user-error "Couldn't identify where %s is defined"
                       sym-name))
 
         ;; If the symbol is only bound in one namespace, use that.
@@ -623,7 +623,7 @@ Assumes FORM has been fully macro-expanded."
              (elisp-def--find-function sym)))]
       (unless (and buf pos)
         ;; todo: mention if it's due to being a primitive
-        (user-error "Could not find definition for %s %s"
+        (user-error "Couldn't find definition for %s %s"
                     namespace sym))
 
       (switch-to-buffer buf)
