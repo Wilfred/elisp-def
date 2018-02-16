@@ -393,7 +393,8 @@ but with the symbol itself replaced by symbol PLACEHOLDER."
 (defun elisp-def--bound-syms (form sym &optional accum)
   "Return a list of bound symbols around the symbol SYM in FORM.
 
-Assumes FORM has been fully macro-expanded."
+We only find bindings from special forms, caller is responsible
+for macro-expanding."
   (catch 'done
     ;; If we've hit the symbol we're looking for, we can return the
     ;; bound symbols we found.
