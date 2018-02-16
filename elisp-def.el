@@ -674,7 +674,13 @@ Assumes FORM has been fully macro-expanded."
     ;; Setting bound var.
     (setq wh/foo 3)
     ;; Calling the function with the bound var.
-    (wh/foo wh/foo)))
+    (wh/foo wh/foo))
+
+  (let ((wh/foo 123))
+    ;; This adds one to the outer bound version, we should not get
+    ;; confused with the inner binding.
+    (let ((wh/foo (+ wh/foo 1)))
+      (wh/foo 2))))
 
 (provide 'elisp-def)
 ;;; elisp-def.el ends here
