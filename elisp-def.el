@@ -188,17 +188,17 @@ quoted variable, or a let-bound variable?"
       'function
     ;; Otherwise, macro expand the source at point and look at how the
     ;; symbol is used.
-    (let* ((src (elisp-def--source-with-placeholder))
+    (let* ((placeholder (elisp-def--fresh-placeholder))
+           (src (elisp-def--source-with-placeholder placeholder))
            (form (read src))
            ;; TODO: what if SYM disappears after expanding? E.g. inside rx.
            (expanded-form (macroexpand-all form))
-           (use (elisp-def--use-position expanded-form 'elisp-def--placeholder)))
+           (use (elisp-def--use-position expanded-form placeholder)))
       ;; If it's being used as a variable, see if it's let-bound.
       (when (eq use 'variable)
         (let* ((sym (symbol-at-point))
                (bound-syms (elisp-def--bound-syms
-                            ;; TODO: factor out the placeholder symbol.
-                            expanded-form 'elisp-def--placeholder)))
+                            expanded-form placeholder)))
           (when (memq sym bound-syms)
             (setq use 'bound))))
       use)))
@@ -338,11 +338,25 @@ Assumes FORM has been macro-expanded."
    (eq (elisp-def--use-position '(let ((foo (bar)))) 'bar)
        'function)))
 
-(defun elisp-def--source-with-placeholder ()
+(defvar elisp-def--placeholder-num 0)
+
+(defun elisp-def--fresh-placeholder ()
+  "Generate a symbol that isn't used anywhere, even in
+elisp-def's source code itself.
+
+This differs from `make-symbol', as that doesn't guarantee that
+the symbol _name_ is unused."
+  (setq elisp-def--placeholder-num
+        (1+ elisp-def--placeholder-num))
+  (intern
+   (format
+    "elisp-def--fresh-placeholder-%s"
+    elisp-def--placeholder-num)))
+
+(defun elisp-def--source-with-placeholder (placeholder)
   "Return the source enclosing the symbol at point,
-but with the symbol itself replaced by a placeholder."
-  (let* ((placeholder-sym "elisp-def--placeholder")
-         (start-pos (point))
+but with the symbol itself replaced by symbol PLACEHOLDER."
+  (let* ((start-pos (point))
          form-start form-end)
     ;; Find the limits of the top-level expression around point.
     (save-excursion
@@ -361,7 +375,7 @@ but with the symbol itself replaced by a placeholder."
         (goto-char (- start-pos form-start))
         (-let [(sym-start . sym-end) (bounds-of-thing-at-point 'symbol)]
           (delete-region sym-start sym-end))
-        (insert placeholder-sym)
+        (insert (symbol-name placeholder))
         (buffer-string)))))
 
 (defun elisp-def--join-and (items)
