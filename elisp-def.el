@@ -600,7 +600,8 @@ for macro-expanding."
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
-  (let* ((sym (symbol-at-point))
+  (let* ((init-pos (point))
+         (sym (symbol-at-point))
          (sym-name (symbol-name sym))
          ;; Try to find the namespace by macro expanding the code.
          (namespace (elisp-def--namespace-at-point)))
@@ -653,7 +654,8 @@ for macro-expanding."
     (let (start-pos end-pos)
       (save-excursion
         (re-search-forward
-         (rx-to-string `(seq symbol-start ,sym-name symbol-end)))
+         (rx-to-string `(seq symbol-start ,sym-name symbol-end))
+         init-pos)
         (setq end-pos (point))
         (setq start-pos (- end-pos (length sym-name))))
       (elisp-def--flash-region start-pos end-pos))))
