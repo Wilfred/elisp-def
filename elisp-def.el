@@ -674,6 +674,57 @@ sharp-quoted symbol."
       (forward-char))
     (symbol-at-point)))
 
+(defun elisp-def--enclosing-form (depth)
+  "Move up DEPTH sexps from point, and return the start and end
+positions of the form."
+  (save-excursion
+    (--dotimes depth
+      (let* ((ppss (syntax-ppss))
+             (enclosing-start-pos (nth 1 ppss)))
+        (goto-char enclosing-start-pos)))
+    (list (point)
+          (progn
+            (forward-sexp)
+            (point)))))
+
+(defun elisp-def--binding-form-start ()
+  "Return the start position of the form enclosing point
+that binds the symbol at point.
+
+For example, where point is shown with |, input:
+
+\(defun foo ()
+  (let (bar)
+    (setq ba|r 1)))
+
+Output:
+
+\(defun foo ()
+  |(let (bar)
+     (setq bar 1)))
+
+This an approximation: we incrementally expand macros around
+point. If outer macros rewrite inner forms, we may go to the
+wrong place. This should be very rare."
+  (let* ((sym (elisp-def--symbol-at-point))
+         (placeholder (elisp-def--fresh-placeholder))
+         (ppss (syntax-ppss)))
+    (catch 'found
+      ;; Start with the innermost form, and incrementally move outwards.
+      (--each (number-sequence 1 (syntax-ppss-depth ppss))
+        ;; For each enclosing form, see if it binds the symbol at point.
+        (-let* (((start end) (elisp-def--enclosing-form it))
+                (src (elisp-def--source-with-placeholder
+                      start end placeholder))
+                (form (read src))
+                (expanded-form (macroexpand-all form))
+                (bound-syms (elisp-def--bound-syms
+                             expanded-form placeholder)))
+          ;; If this enclosing form introduces a binding for the
+          ;; symbol we want, we've found the innermost binding!
+          (when (memq sym bound-syms)
+            (throw 'found start)))))))
+
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
@@ -710,6 +761,9 @@ sharp-quoted symbol."
 
     (-let [(buf pos)
            (cond
+            ((eq namespace 'bound)
+             (list (current-buffer)
+                   (elisp-def--binding-form-start)))
             ((eq namespace 'library)
              (elisp-def--find-feature sym))
             ((eq namespace 'variable)
