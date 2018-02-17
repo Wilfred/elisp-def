@@ -413,11 +413,40 @@ but with the symbol at point replaced by symbol PLACEHOLDER."
         ;; Replace the original symbol at point with a placeholder, so
         ;; we can distinguish it from other occurrences of this symbol within
         ;; the sexp.
-        (goto-char (- start-pos start))
+        ;;
+        ;; The difference of two positions is zero-indexed, but buffer
+        ;; positions are one-indexed.
+        (goto-char (1+ (- start-pos start)))
         (-let [(sym-start . sym-end) (bounds-of-thing-at-point 'symbol)]
           (delete-region sym-start sym-end))
         (insert (symbol-name placeholder))
         (buffer-string)))))
+
+(ert-deftest elisp-def--source-with-placeholder ()
+  ;; Point at the beginning of a symbol.
+  (with-temp-buffer
+    (insert "(foo bar)")
+    (goto-char (point-min))
+    ;; Point at start of the 'bar'.
+    (search-forward " ")
+
+    (should
+     (equal
+      (elisp-def--source-with-placeholder
+       (point-min) (point-max) 'placeholder)
+      "(foo placeholder)")))
+  ;; Point the end of a symbol.
+  (with-temp-buffer
+    (insert "(foo bar)")
+    (goto-char (point-min))
+    ;; Point at end of the 'bar'.
+    (search-forward "r")
+
+    (should
+     (equal
+      (elisp-def--source-with-placeholder
+       (point-min) (point-max) 'placeholder)
+      "(foo placeholder)"))))
 
 (defun elisp-def--join-and (items)
   "Join a list of strings with commas and \"and\"."
