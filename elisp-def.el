@@ -293,8 +293,6 @@ quoted variable, or a let-bound variable?"
      (eq (elisp-def--namespace-at-point)
          'library))))
 
-;; TODO: handle declarations, which aren't usages at all.
-;; (let ((FOO ...))) or (lambda (FOO) ...)
 (defun elisp-def--use-position (form sym &optional quoted)
   "Is SYM being used as a function, a global variable, a
 library/feature, a bound variable definition, or a quoted symbol
@@ -313,6 +311,17 @@ Assumes FORM has been macro-expanded."
      ;; Lambda parameters are variable definitions.
      ((and (eq (car form) 'lambda)
            (memq sym (cadr form)))
+      'definition)
+     ;; Let forms can introduce definitions too.
+     ((and (memq (car form) (list 'let 'let*))
+           (-let [bindings (cadr form)]
+             (--any-p
+              (or
+               ;; (let (foo ...) ...)
+               (eq it sym)
+               ;; (let ((foo ...)) ...)
+               (and (consp it) (eq (car it) sym)))
+              bindings)))
       'definition)
      ;; Explicit call to `require'.
      ((and (eq (car form) 'require)
@@ -347,10 +356,18 @@ Assumes FORM has been macro-expanded."
        'quoted))
   ;; Let forms.
   ;; TODO: condition-case
-  ;; TODO: Let binding
+  ;; TODO: error on viewing def of eq.
+  ;; Expressions used to assign to variables.
   (should
    (eq (elisp-def--use-position '(let ((foo (bar)))) 'bar)
        'function))
+  ;; Let variable declarations.
+  (should
+   (eq (elisp-def--use-position '(let ((foo (bar)))) 'foo)
+       'definition))
+  (should
+   (eq (elisp-def--use-position '(let (foo) (bar)) 'foo)
+       'definition))
   ;; Lambdas parameters are definitions.
   (should
    (eq (elisp-def--use-position '(lambda (foo) 1) 'foo)
@@ -707,6 +724,7 @@ sharp-quoted symbol."
 (defun wh/bar ()
   ;; Setting global var.
   (setq wh/foo 2)
+  ;; Binding a variable, not a function call.
   (let (wh/foo)
     ;; Setting bound var.
     (setq wh/foo 3)
