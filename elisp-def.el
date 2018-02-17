@@ -33,6 +33,7 @@
 (require 'f)
 (require 'find-func)
 (require 'thingatpt)
+(require 'xref)
 
 (defun elisp-def--flash-region (start end)
   "Temporarily highlight region from START to END."
