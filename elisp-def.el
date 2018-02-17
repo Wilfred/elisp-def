@@ -297,7 +297,8 @@ quoted variable, or a let-bound variable?"
 ;; (let ((FOO ...))) or (lambda (FOO) ...)
 (defun elisp-def--use-position (form sym &optional quoted)
   "Is SYM being used as a function, a global variable, a
-library/feature, or a quoted symbol in FORM?
+library/feature, a bound variable definition, or a quoted symbol
+in FORM?
 
 Assumes FORM has been macro-expanded."
   (cond
@@ -309,13 +310,17 @@ Assumes FORM has been macro-expanded."
       nil))
    ((consp form)
     (cond
-     ((eq (car form) sym)
-      ;; Function call for the symbol we're looking for.
-      (if quoted 'quoted 'function))
+     ;; Lambda parameters are variable definitions.
+     ((and (eq (car form) 'lambda)
+           (memq sym (cadr form)))
+      'definition)
      ;; Explicit call to `require'.
      ((and (eq (car form) 'require)
            (equal (car-safe (cdr form)) `(quote ,sym)))
       'library)
+     ((eq (car form) sym)
+      ;; Function call for the symbol we're looking for.
+      (if quoted 'quoted 'function))
      ;; See if this is a quoted form that contains SYM.
      ((eq (car form) 'quote)
       (--any (elisp-def--use-position it sym t) (cdr form)))
@@ -340,9 +345,19 @@ Assumes FORM has been macro-expanded."
   (should
    (eq (elisp-def--use-position '(foo '(bar)) 'bar)
        'quoted))
+  ;; Let forms.
+  ;; TODO: condition-case
+  ;; TODO: Let binding
   (should
    (eq (elisp-def--use-position '(let ((foo (bar)))) 'bar)
-       'function)))
+       'function))
+  ;; Lambdas parameters are definitions.
+  (should
+   (eq (elisp-def--use-position '(lambda (foo) 1) 'foo)
+       'definition))
+  (should
+   (eq (elisp-def--use-position '(lambda (foo bar) 1) 'bar)
+       'definition)))
 
 (defvar elisp-def--placeholder-num 0)
 
