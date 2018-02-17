@@ -167,17 +167,22 @@ Note that macros are in the same namespace as functions."
 ;; --cl-foo-- so we can't identify where foo is defined or whether
 ;; it's a function call or a variable.
 
-;; TODO: Handle point being on the # in #'foo.
 (defun elisp-def--sharp-quoted-p ()
-  "Is the symbol at point sharp quoted?"
+  "Is the symbol at point of the form #'foo?"
   (save-excursion
-    (-let [(sym-start . _sym-end) (bounds-of-thing-at-point 'symbol)]
-      (when sym-start
-        (goto-char sym-start)
-        (condition-case nil
-            (backward-char 2)
-          (beginning-of-buffer nil))
-        (looking-at (rx "#'"))))))
+    (re-search-forward (rx symbol-end))
+    (backward-sexp)
+    (looking-at (rx "#'"))))
+
+(ert-deftest elisp-def--sharp-quoted-p ()
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "#'abc")
+    (goto-char (point-min))
+    (dotimes (i 3)
+      (message "i %s" i)
+      (should (elisp-def--sharp-quoted-p))
+      (forward-char))))
 
 (defun elisp-def--namespace-at-point ()
   "Is the symbol at point a function/macro, a global variable, a
@@ -197,7 +202,7 @@ quoted variable, or a let-bound variable?"
             (use (elisp-def--use-position expanded-form placeholder)))
       ;; If it's being used as a variable, see if it's let-bound.
       (when (eq use 'variable)
-        (let* ((sym (symbol-at-point))
+        (let* ((sym (elisp-def--symbol-at-point))
                (bound-syms (elisp-def--bound-syms
                             expanded-form placeholder)))
           (when (memq sym bound-syms)
@@ -597,11 +602,21 @@ for macro-expanding."
     (elisp-def--bound-syms '(progn (x y) XXX) 'XXX)
     nil)))
 
+(defun elisp-def--symbol-at-point ()
+  "Get the symbol at point, even if we're on a quoted or
+sharp-quoted symbol."
+  (save-excursion
+    (when (looking-at (rx "#"))
+      (forward-char))
+    (when (looking-at (rx "'"))
+      (forward-char))
+    (symbol-at-point)))
+
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
   (let* ((init-pos (point))
-         (sym (symbol-at-point))
+         (sym (elisp-def--symbol-at-point))
          (sym-name (symbol-name sym))
          ;; Try to find the namespace by macro expanding the code.
          (namespace (elisp-def--namespace-at-point)))
