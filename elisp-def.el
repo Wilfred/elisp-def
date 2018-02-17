@@ -188,12 +188,13 @@ quoted variable, or a let-bound variable?"
       'function
     ;; Otherwise, macro expand the source at point and look at how the
     ;; symbol is used.
-    (let* ((placeholder (elisp-def--fresh-placeholder))
-           (src (elisp-def--source-with-placeholder placeholder))
-           (form (read src))
-           ;; TODO: what if SYM disappears after expanding? E.g. inside rx.
-           (expanded-form (macroexpand-all form))
-           (use (elisp-def--use-position expanded-form placeholder)))
+    (-let* (((form-start form-end) (elisp-def--defun-start))
+            (placeholder (elisp-def--fresh-placeholder))
+            (src (elisp-def--source-with-placeholder form-start form-end placeholder))
+            (form (read src))
+            ;; TODO: what if SYM disappears after expanding? E.g. inside rx.
+            (expanded-form (macroexpand-all form))
+            (use (elisp-def--use-position expanded-form placeholder)))
       ;; If it's being used as a variable, see if it's let-bound.
       (when (eq use 'variable)
         (let* ((sym (symbol-at-point))
@@ -353,26 +354,29 @@ the symbol _name_ is unused."
     "elisp-def--fresh-placeholder-%s"
     elisp-def--placeholder-num)))
 
-(defun elisp-def--source-with-placeholder (placeholder)
-  "Return the source enclosing the symbol at point,
-but with the symbol itself replaced by symbol PLACEHOLDER."
-  (let* ((start-pos (point))
-         form-start form-end)
-    ;; Find the limits of the top-level expression around point.
+(defun elisp-def--defun-start ()
+  "Find the start of the top-level form enclosing point."
+  (let (start end)
     (save-excursion
       (beginning-of-defun)
-      (setq form-start (point))
+      (setq start (point))
       (end-of-defun)
-      (setq form-end (point)))
-    ;; Copy that top-level expression into a separate buffer, so we
-    ;; can modify the source.
-    (let ((src (buffer-substring-no-properties form-start form-end)))
+      (setq end (point)))
+    (list start end)))
+
+(defun elisp-def--source-with-placeholder (start end placeholder)
+  "Return the source between START and END in the current buffer,
+but with the symbol at point replaced by symbol PLACEHOLDER."
+  (let* ((start-pos (point)))
+    ;; Copy that expression into a separate buffer, so we can modify
+    ;; the source.
+    (let ((src (buffer-substring-no-properties start end)))
       (with-temp-buffer
         (insert src)
         ;; Replace the original symbol at point with a placeholder, so
         ;; we can distinguish it from other occurrences of this symbol within
         ;; the sexp.
-        (goto-char (- start-pos form-start))
+        (goto-char (- start-pos start))
         (-let [(sym-start . sym-end) (bounds-of-thing-at-point 'symbol)]
           (delete-region sym-start sym-end))
         (insert (symbol-name placeholder))
