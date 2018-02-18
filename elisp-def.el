@@ -489,8 +489,7 @@ wrong place. This should be very rare."
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
-  (let* ((init-pos (point))
-         (sym (elisp-def--symbol-at-point))
+  (let* ((sym (elisp-def--symbol-at-point))
          (sym-name (symbol-name sym))
          ;; Try to find the namespace by macro expanding the code.
          (namespace (elisp-def--namespace-at-point)))
