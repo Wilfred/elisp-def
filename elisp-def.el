@@ -780,11 +780,15 @@ wrong place. This should be very rare."
 
     ;; POS is actually the start of line where SYM is defined. Work
     ;; out the exact position of SYM, and flash it.
-    (let (start-pos end-pos)
+    (let (sexp-end-pos start-pos end-pos)
+      (save-excursion
+        (forward-sexp)
+        (setq sexp-end-pos (point)))
       (save-excursion
         (re-search-forward
          (rx-to-string `(seq symbol-start ,sym-name symbol-end))
-         init-pos)
+         sexp-end-pos
+         nil)
         (setq end-pos (point))
         (setq start-pos (- end-pos (length sym-name))))
       (elisp-def--flash-region start-pos end-pos))))
