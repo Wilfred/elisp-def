@@ -223,8 +223,6 @@
      'XXX)
     (list 'x))))
 
-
-
 (ert-deftest elisp-def--bound-syms--let* ()
   (should
    (equal
