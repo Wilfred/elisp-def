@@ -796,32 +796,5 @@ wrong place. This should be very rare."
 ;; Overriding xref-find-definitions.
 (define-key lisp-mode-map (kbd "M-.") #'elisp-def)
 
-;; Torture test. Run \\[eval-buffer] first so Emacs knows where the
-;; global var is defined.
-
-;; (defconst wh/foo 1)
-
-(defcustom wh/foo 1
-  "A test variable.")
-
-(defun wh/foo (x)
-  (1+ x))
-
-(defun wh/bar ()
-  ;; Setting global var.
-  (setq wh/foo 2)
-  ;; Binding a variable, not a function call.
-  (let (wh/foo)
-    ;; Setting bound var.
-    (setq wh/foo 3)
-    ;; Calling the function with the bound var.
-    (wh/foo wh/foo))
-
-  (let ((wh/foo 123))
-    ;; This adds one to the outer bound version, we should not get
-    ;; confused with the inner binding.
-    (let ((wh/foo (+ wh/foo 1)))
-      (wh/foo 2))))
-
 (provide 'elisp-def)
 ;;; elisp-def.el ends here
