@@ -172,7 +172,17 @@
     (elisp-def--bound-syms '(lambda (x &optional y &rest z) XXX) 'XXX)
     (list 'x 'y 'z))))
 
-
+(ert-deftest elisp-def--bound-syms--improper ()
+  "Don't crash on improper lists."
+  (should
+   (equal
+    (elisp-def--bound-syms
+     '(lambda (x)
+        (when x
+          '(foo . bar))
+        XXX)
+     'XXX)
+    (list 'x))))
 
 (ert-deftest elisp-def--bound-syms--let ()
   ;; Handle bindings introduced by let.

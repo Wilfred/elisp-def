@@ -415,9 +415,10 @@ for macro-expanding."
          ;; actually possible to introduce a global with `setq', but we
          ;; ignore that.
          (t
-          (setq bindings-found
-                (--map (elisp-def--bound-syms it sym accum)
-                       form))))
+          (when (ert--proper-list-p form)
+            (setq bindings-found
+                  (--map (elisp-def--bound-syms it sym accum)
+                         form)))))
 
         ;; For any sublist that didn't contain XXX, we will have
         ;; returned nil. Find the non-empty list, if any.
