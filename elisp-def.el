@@ -428,12 +428,23 @@ for macro-expanding."
 (defun elisp-def--symbol-at-point ()
   "Get the symbol at point, even if we're on a quoted or
 sharp-quoted symbol."
-  (save-excursion
-    (when (looking-at (rx "#"))
-      (forward-char))
-    (when (looking-at (rx "'"))
-      (forward-char))
-    (symbol-at-point)))
+  (let* ((sym
+          (save-excursion
+            (when (looking-at (rx "#"))
+              (forward-char))
+            (when (looking-at (rx "'"))
+              (forward-char))
+            (symbol-at-point)))
+         (ppss (syntax-ppss))
+         (in-string (nth 3 ppss))
+         (in-comment (nth 4 ppss)))
+    ;; Handle FOO in docstrings.
+    (when (and
+           (or in-string in-comment)
+           (not (or (boundp sym) (fboundp sym)))
+           (s-uppercase? (symbol-name sym)))
+      (setq sym (intern (downcase (symbol-name sym)))))
+    sym))
 
 (defun elisp-def--enclosing-form (depth)
   "Move up DEPTH sexps from point, and return the start and end

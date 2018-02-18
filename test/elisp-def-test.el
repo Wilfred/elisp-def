@@ -2,6 +2,38 @@
 
 (require 'elisp-def)
 
+(defmacro elisp-def--with-temp-buffer (src &rest body)
+  (declare (indent 1) (debug t))
+  `(with-temp-buffer
+     (emacs-lisp-mode)
+     (insert ,src)
+     (goto-char (point-min))
+     ,@body))
+
+(ert-deftest elisp-def--symbol-at-point ()
+  ;; Symbol at point or quoted symbol.
+  (dolist (src '("foo" "#'foo"))
+    (elisp-def--with-temp-buffer src
+      (should
+       (eq
+        (elisp-def--symbol-at-point)
+        'foo))))
+  ;; Backquoted symbols.
+  (dolist (src '(";; `foo'" "\"`foo'\""))
+    (elisp-def--with-temp-buffer src
+      (search-forward "f")
+      (should
+       (eq
+        (elisp-def--symbol-at-point)
+        'foo))))
+  ;; Docstring conventions, where FOO means a parameter named `foo'..
+  (elisp-def--with-temp-buffer "\"FOO\""
+    (search-forward "f")
+    (should
+     (eq
+      (elisp-def--symbol-at-point)
+      'foo))))
+
 (ert-deftest elisp-def--sharp-quoted-p ()
   (with-temp-buffer
     (emacs-lisp-mode)
