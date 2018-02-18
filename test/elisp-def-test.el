@@ -43,6 +43,9 @@
          'bound)))
   ;; Handle let-bound variables introduced by macros.
   (with-temp-buffer
+    ;; We require cl to be loaded in order to know how to expand
+    ;; `destructuring-bind'.
+    (require 'cl)
     (insert "(destructuring-bind (x y) z (1+ x))")
 
     (goto-char (point-min))
