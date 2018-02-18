@@ -3,36 +3,82 @@
 Go to the definition of the symbol at point, intelligently handling
 macros, and distinguishing functions from variables.
 
-## Find Function Definitions
+It statically analyses your code, and falls back to heuristics. It
+should work 99% of the time, so please file bugs if it can't find
+definitions for your code.
+
+## Find Definitions
+
+`elisp-def` will find the definition of functions and global variables
+at point.
 
 ``` emacs-lisp
-(defvar wh/foo nil)
-
-(defun wh/foo ()
+(defun demo/foo ()
   1)
 
-;; Try elisp-def on the next symbol.
-(wh/foo)
+(defun demo/bar ()
+  ;; M-x eval-buffer, then elisp-def on this:
+  (demo/foo))
 ```
 
-## Intelligent Namespace Handling
+It will also use edebug information to find function definitions, so
+it finds definitions more often than xref.
 
-## Macro Aware
+## Lisp-2 Awareness
+
+`elisp-def` understands the difference between symbols and functions
+and jumps to the correct definition.
 
 ``` emacs-lisp
-(defvar wh/foo nil)
+(require 'cc-mode)
 
-(defun wh/foo (x)
-  1)
+;; `c-version' is both a variable and a function.
 
+(defun demo/foo ()
+  ;; `elisp-def` will find the function here.
+  (c-version))
+
+(defun demo/foo ()
+  ;; `elisp-def` will find the variable here.
+  (setq c-version t))
+```
+
+`elisp-def` understands macros too.
+
+``` emacs-lisp
 (require 'dash)
-(->> 1
-     ;; elisp-def knows that this is a function, even though there are
-     ;; no parens.
-     wh/foo)
+
+(defvar demo/foo nil)
+
+(defun demo/foo (x)
+  x)
+
+(defun demo/bar ()
+  (->> 123
+       ;; `elisp-def' knows that this is a function, even though there are
+       ;; no parens.
+       demo/foo))
 ```
 
-## Find Packages
+## Find Libraries
+
+`elisp-def` will find libraries, displaying the `provide` declarations
+if possible.
+
+``` emacs-lisp
+;; `elisp-def' will open python.el here.
+(require 'python)
+
+;; Unlike `xref-find-definition', `elisp-def' will not confuse this
+;; library name with the macro named `use-package'.
+(require 'use-package)
+
+;; `elisp-def' will even find python.el here, because the macro
+;; expands to a call to `require'.
+(use-package python
+  :config
+  (setq python-indent-guess-indent-offset-verbose nil))
+```
 
 ## Local Bindings
 
@@ -43,6 +89,8 @@ macros, and distinguishing functions from variables.
 Macros that rewrite bodies will fail, such as `cl-labels`.
 
 Let macros that repeat bindings.
+
+Quoted symbols.
 
 ## Thanks/Inspirations
 
