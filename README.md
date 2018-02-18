@@ -82,9 +82,56 @@ if possible.
 
 ## Local Bindings
 
-`let`
+`elisp-def` understands local bindings and parameters.
+
+``` emacs-lisp
+(defun demo/foo (bar)
+  (let ((foo 1))
+    ;; `elisp-def' on the FOO below will move point to the let
+    ;; binding.
+    (setq foo 2)
+    ;; `elisp-def' on the BAR below will move point to the function
+    ;; parameters line.
+    (setq bar 3)))
+```
+
+This even works with macros that introduce bindings.
+
+``` emacs-lisp
+(require 'dash)
+(eval-when-compile
+  (require 'cl-lib))
+
+(defun demo/foo (items)
+  (cl-destructuring-bind (first second) items
+    ;; `elisp-def' knowns that FIRST is bound on line above.
+    (message "first is %s" first))
+  (-let [(first . rest) items]
+    ;; `elisp-def' knowns that FIRST is bound on line above.
+    (message "first is %s" first)))
+```
+
+`elisp-def` handles nested `let`, `let*` and `condition-case`
+intelligently too.
 
 ## Caveats
+
+`elisp-def` is limited in its ability to analyse quoted symbols.
+
+``` emacs-lisp
+;; `elisp-def' is able to find these quoted symbols because they're
+;; only globally bound in one namespace.
+(mapcar 'symbol-name '(foo bar baz))
+(add-to-list 'auto-mode-alist '("\\.java\\'" . java-mode))
+
+(require 'cc-mode)
+(defun demo/calls-fn (sym)
+  (funcall sym))
+
+;; Since `c-version' is both a function and a variable, and we're not
+;; using a sharp-quote #'c-version, we have to prompt the user.
+(demo/calls-fn 'c-version)
+```
 
 Macros that rewrite bodies will fail, such as `cl-labels`.
 
