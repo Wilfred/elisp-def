@@ -32,6 +32,7 @@
 (require 'find-func)
 (require 'thingatpt)
 (require 'xref)
+(require 'ert)
 
 (defun elisp-def--flash-region (start end)
   "Temporarily highlight region from START to END."
@@ -331,10 +332,16 @@ Assumes FORM has been macro-expanded."
       (if quoted 'quoted 'function))
      ;; See if this is a quoted form that contains SYM.
      ((eq (car form) 'quote)
-      (--any (elisp-def--use-position it sym t) (cdr form)))
+      (if (ert--proper-list-p (cdr form))
+          (--any (elisp-def--use-position it sym t) (cdr form))
+        (elisp-def--use-position (cdr form) sym t)))
      ;; Recurse on the form to see if any arguments contain SYM.
      (t
-      (--any (elisp-def--use-position it sym quoted) form))))
+      (if (ert--proper-list-p form)
+          (--any (elisp-def--use-position it sym quoted) form)
+        (or
+         (elisp-def--use-position (car form) sym quoted)
+         (elisp-def--use-position (cdr form) sym quoted))))))
    ((vectorp form)
     ;; All elements in a vector are quoted.
     (--any (elisp-def--use-position it sym t)
@@ -352,6 +359,9 @@ Assumes FORM has been macro-expanded."
        'quoted))
   (should
    (eq (elisp-def--use-position '(foo '(bar)) 'bar)
+       'quoted))
+  (should
+   (eq (elisp-def--use-position '(foo '(baz . bar)) 'bar)
        'quoted))
   ;; Let forms.
   ;; TODO: condition-case
