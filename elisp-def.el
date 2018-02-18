@@ -182,17 +182,32 @@ Note that macros are in the same namespace as functions."
 
 (defun elisp-def--namespace-at-point ()
   "Is the symbol at point a function/macro, a global variable, a
-quoted variable, or a let-bound variable?"
-  ;; If it's a sharp quoted symbol, we know it's a global function
-  ;; reference.
-  (if (elisp-def--sharp-quoted-p)
-      'function
+quoted variable, or a let-bound variable?
+
+Variable references in docstrings and comments are treated as
+quoted variables, because they aren't being used at point."
+  (catch 'done
+    ;; If it's a sharp quoted symbol, we know it's a global function
+    ;; reference.
+    (if (elisp-def--sharp-quoted-p)
+        (throw 'done 'function))
+
+    ;; If we're in a string or comment, we can't infer anything about
+    ;; the namespace, so just treat it as quoted.
+    (let* ((ppss (syntax-ppss))
+           (in-string (nth 3 ppss))
+           (in-comment (nth 4 ppss)))
+      (when (or in-string in-comment)
+        (throw 'done 'quoted)))
+
     ;; Otherwise, macro expand the source at point and look at how the
     ;; symbol is used.
     (-let* (((form-start form-end) (elisp-def--defun-start))
             (placeholder (elisp-def--fresh-placeholder))
             (src (elisp-def--source-with-placeholder form-start form-end placeholder))
-            (form (read src))
+            (form (condition-case nil
+                      (read src)
+                    (end-of-file nil)))
             ;; TODO: what if SYM disappears after expanding? E.g. inside rx.
             (expanded-form (macroexpand-all form))
             (use (elisp-def--use-position expanded-form placeholder)))
