@@ -96,10 +96,11 @@ source code: they have e.g. org.elc but no org.el."
 This is the function _slot_ of SYM, so SYM may be a function or macro."
   (let ((primitive-p (elisp-def--primitive-p sym t))
         path buf pos)
-    (-let [(base-sym . src-path) (find-function-library sym)]
-      ;; `base-sym' is the underlying symbol if `sym' is an alias.
-      (setq sym base-sym)
-      (setq path src-path))
+    (when (fboundp sym)
+      (-let [(base-sym . src-path) (find-function-library sym)]
+        ;; `base-sym' is the underlying symbol if `sym' is an alias.
+        (setq sym base-sym)
+        (setq path src-path)))
     (when (and primitive-p path find-function-C-source-directory)
       ;; Convert "src/foo.c" to "".
       (setq path (f-expand path

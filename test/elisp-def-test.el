@@ -272,4 +272,10 @@
     (elisp-def--bound-syms '(progn (x y) XXX) 'XXX)
     nil)))
 
+(ert-deftest elisp-def--find-function--unbound ()
+  (should
+   (equal
+    (elisp-def--find-function 'no-such-func)
+    (list nil nil))))
+
 ;;; elisp-def-test.el ends here
