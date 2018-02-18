@@ -486,6 +486,48 @@ wrong place. This should be very rare."
           (when (memq sym bound-syms)
             (throw 'found start)))))))
 
+(defun elisp-def--go-to-definition (form-start sym)
+  "Move point to the symbol after FORM-START that defines the
+variable SYM. Point is put on the first character of that symbol.
+
+For example, if | is point:
+
+\(defun foo ())
+
+=>
+
+\(defun |foo ())
+\(foo)
+
+Or for let-bound variables:
+
+\(let ((x 1))
+  (foo |x))
+
+=>
+
+\(let ((|x 1))
+  (foo x))"
+  (let (form form-end)
+    (save-excursion
+      (goto-char form-start)
+      (setq form (read (current-buffer)))
+
+      ;; `read' moves point over the current form.
+      (setq form-end (point)))
+
+    (if (memq (car form) (list 'let 'let*))
+        (user-error "todo")
+      ;; Otherwise, we assume the first occurrence of the symbol is
+      ;; the definition. Move to that symbol.
+      (goto-char form-start)
+      (when
+          (re-search-forward
+           (rx-to-string `(seq symbol-start ,(symbol-name sym) symbol-end))
+           form-end
+           nil)
+        (backward-sexp)))))
+
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
@@ -540,20 +582,14 @@ wrong place. This should be very rare."
       (switch-to-buffer buf)
       (goto-char pos))
 
-    ;; POS is actually the start of line where SYM is defined. Work
-    ;; out the exact position of SYM, and flash it.
-    (let (sexp-end-pos start-pos end-pos)
+    ;; Point is now at the start of line where SYM is defined. Work
+    ;; out the position of the definition SYM, and flash it.
+    (elisp-def--go-to-definition (point) sym)
+    (let (sym-end-pos)
       (save-excursion
         (forward-sexp)
-        (setq sexp-end-pos (point)))
-      (save-excursion
-        (re-search-forward
-         (rx-to-string `(seq symbol-start ,sym-name symbol-end))
-         sexp-end-pos
-         nil)
-        (setq end-pos (point))
-        (setq start-pos (- end-pos (length sym-name))))
-      (elisp-def--flash-region start-pos end-pos))))
+        (setq sym-end-pos (point)))
+      (elisp-def--flash-region (point) sym-end-pos))))
 
 ;; Overriding xref-find-definitions.
 (define-key lisp-mode-map (kbd "M-.") #'elisp-def)
