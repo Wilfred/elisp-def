@@ -35,52 +35,37 @@
       'foo))))
 
 (ert-deftest elisp-def--sharp-quoted-p ()
-  (with-temp-buffer
-    (emacs-lisp-mode)
-    (insert "#'abc")
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "#'abc"
     (dotimes (i 3)
       (should (elisp-def--sharp-quoted-p))
       (forward-char))))
 
 (ert-deftest elisp-def--namespace-at-point ()
   ;; If it's the head of a sexp, this is a function.
-  (with-temp-buffer
-    (insert "(foo bar)")
-
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(foo bar)"
     (search-forward "foo")
     (should
      (eq (elisp-def--namespace-at-point)
          'function)))
   ;; If it's an argument to a function, it's a variable.
-  (with-temp-buffer
-    (insert "(foo bar)")
-
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer  "(foo bar)"
     (search-forward "bar")
     (should
      (eq (elisp-def--namespace-at-point)
          'variable)))
   ;; Handle let-bound variables.
-  (with-temp-buffer
-    (insert "(let ((x 1)) (1+ x))")
-
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(let ((x 1)) (1+ x))"
     (search-forward "1+")
     (search-forward "x")
 
     (should
      (eq (elisp-def--namespace-at-point)
          'bound)))
+  ;; We require cl to be loaded in order to know how to expand
+  ;; `destructuring-bind'.
+  (require 'cl)
   ;; Handle let-bound variables introduced by macros.
-  (with-temp-buffer
-    ;; We require cl to be loaded in order to know how to expand
-    ;; `destructuring-bind'.
-    (require 'cl)
-    (insert "(destructuring-bind (x y) z (1+ x))")
-
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(destructuring-bind (x y) z (1+ x))"
     (search-forward "1+")
     (search-forward "x")
 
@@ -88,10 +73,7 @@
      (eq (elisp-def--namespace-at-point)
          'bound)))
   ;; Handle function parameters.
-  (with-temp-buffer
-    (insert "(defun foo (x) (1+ x))")
-
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(defun foo (x) (1+ x))"
     (search-forward "1+")
     (search-forward "x")
 
@@ -99,10 +81,7 @@
      (eq (elisp-def--namespace-at-point)
          'bound)))
   ;; Handle binding introduced by condition-case.
-  (with-temp-buffer
-    (insert "(condition-case e (foo) (error e))")
-
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(condition-case e (foo) (error e))"
     (search-forward "error")
     (search-forward "e")
 
@@ -110,20 +89,14 @@
      (eq (elisp-def--namespace-at-point)
          'bound)))
   ;; Quoted references.
-  (with-temp-buffer
-    (insert "(foo 'bar)")
-
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(foo 'bar)"
     (search-forward "bar")
 
     (should
      (eq (elisp-def--namespace-at-point)
          'quoted)))
   ;; Handle references to libraries.
-  (with-temp-buffer
-    (insert "(require 'foo)")
-
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(require 'foo)"
     (search-forward "foo")
 
     (should
@@ -170,9 +143,7 @@
 
 (ert-deftest elisp-def--source-with-placeholder ()
   ;; Point at the beginning of a symbol.
-  (with-temp-buffer
-    (insert "(foo bar)")
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(foo bar)"
     ;; Point at start of the 'bar'.
     (search-forward " ")
 
@@ -182,9 +153,7 @@
        (point-min) (point-max) 'placeholder)
       "(foo placeholder)")))
   ;; Point the end of a symbol.
-  (with-temp-buffer
-    (insert "(foo bar)")
-    (goto-char (point-min))
+  (elisp-def--with-temp-buffer "(foo bar)"
     ;; Point at end of the 'bar'.
     (search-forward "r")
 
