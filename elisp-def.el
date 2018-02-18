@@ -1,6 +1,7 @@
 ;;; elisp-def.el --- macro-aware go-to-definition for elisp  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018  Wilfred Hughes
+;; Version: 0.1
 
 ;; Author: Wilfred Hughes <me@wilfred.me.uk>
 ;; Keywords: lisp
@@ -174,16 +175,6 @@ Note that macros are in the same namespace as functions."
     (backward-sexp)
     (looking-at (rx "#'"))))
 
-(ert-deftest elisp-def--sharp-quoted-p ()
-  (with-temp-buffer
-    (emacs-lisp-mode)
-    (insert "#'abc")
-    (goto-char (point-min))
-    (dotimes (i 3)
-      (message "i %s" i)
-      (should (elisp-def--sharp-quoted-p))
-      (forward-char))))
-
 (defun elisp-def--namespace-at-point ()
   "Is the symbol at point a function/macro, a global variable, a
 quoted variable, or a let-bound variable?"
@@ -208,90 +199,6 @@ quoted variable, or a let-bound variable?"
           (when (memq sym bound-syms)
             (setq use 'bound))))
       use)))
-
-(ert-deftest elisp-def--namespace-at-point ()
-  ;; If it's the head of a sexp, this is a function.
-  (with-temp-buffer
-    (insert "(foo bar)")
-
-    (goto-char (point-min))
-    (search-forward "foo")
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'function)))
-  ;; If it's an argument to a function, it's a variable.
-  (with-temp-buffer
-    (insert "(foo bar)")
-
-    (goto-char (point-min))
-    (search-forward "bar")
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'variable)))
-  ;; Handle let-bound variables.
-  (with-temp-buffer
-    (insert "(let ((x 1)) (1+ x))")
-
-    (goto-char (point-min))
-    (search-forward "1+")
-    (search-forward "x")
-
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'bound)))
-  ;; Handle let-bound variables introduced by macros.
-  (with-temp-buffer
-    (insert "(destructuring-bind (x y) z (1+ x))")
-
-    (goto-char (point-min))
-    (search-forward "1+")
-    (search-forward "x")
-
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'bound)))
-  ;; Handle function parameters.
-  (with-temp-buffer
-    (insert "(defun foo (x) (1+ x))")
-
-    (goto-char (point-min))
-    (search-forward "1+")
-    (search-forward "x")
-
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'bound)))
-  ;; Handle binding introduced by condition-case.
-  (with-temp-buffer
-    (insert "(condition-case e (foo) (error e))")
-
-    (goto-char (point-min))
-    (search-forward "error")
-    (search-forward "e")
-
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'bound)))
-  ;; Quoted references.
-  (with-temp-buffer
-    (insert "(foo 'bar)")
-
-    (goto-char (point-min))
-    (search-forward "bar")
-
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'quoted)))
-  ;; Handle references to libraries.
-  (with-temp-buffer
-    (insert "(require 'foo)")
-
-    (goto-char (point-min))
-    (search-forward "foo")
-
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'library))))
 
 (defun elisp-def--use-position (form sym &optional quoted)
   "Is SYM being used as a function, a global variable, a
@@ -347,44 +254,6 @@ Assumes FORM has been macro-expanded."
     (--any (elisp-def--use-position it sym t)
            (mapcar #'identity form)))))
 
-(ert-deftest elisp-def--use-position ()
-  (should
-   (eq (elisp-def--use-position '(foo bar) 'foo)
-       'function))
-  (should
-   (eq (elisp-def--use-position '(foo bar) 'bar)
-       'variable))
-  (should
-   (eq (elisp-def--use-position [foo] 'foo)
-       'quoted))
-  (should
-   (eq (elisp-def--use-position '(foo '(bar)) 'bar)
-       'quoted))
-  (should
-   (eq (elisp-def--use-position '(foo '(baz . bar)) 'bar)
-       'quoted))
-  ;; Let forms.
-  ;; TODO: condition-case
-  ;; TODO: error on viewing def of eq.
-  ;; Expressions used to assign to variables.
-  (should
-   (eq (elisp-def--use-position '(let ((foo (bar)))) 'bar)
-       'function))
-  ;; Let variable declarations.
-  (should
-   (eq (elisp-def--use-position '(let ((foo (bar)))) 'foo)
-       'definition))
-  (should
-   (eq (elisp-def--use-position '(let (foo) (bar)) 'foo)
-       'definition))
-  ;; Lambdas parameters are definitions.
-  (should
-   (eq (elisp-def--use-position '(lambda (foo) 1) 'foo)
-       'definition))
-  (should
-   (eq (elisp-def--use-position '(lambda (foo bar) 1) 'bar)
-       'definition)))
-
 (defvar elisp-def--placeholder-num 0)
 
 (defun elisp-def--fresh-placeholder ()
@@ -430,32 +299,6 @@ but with the symbol at point replaced by symbol PLACEHOLDER."
           (delete-region sym-start sym-end))
         (insert (symbol-name placeholder))
         (buffer-string)))))
-
-(ert-deftest elisp-def--source-with-placeholder ()
-  ;; Point at the beginning of a symbol.
-  (with-temp-buffer
-    (insert "(foo bar)")
-    (goto-char (point-min))
-    ;; Point at start of the 'bar'.
-    (search-forward " ")
-
-    (should
-     (equal
-      (elisp-def--source-with-placeholder
-       (point-min) (point-max) 'placeholder)
-      "(foo placeholder)")))
-  ;; Point the end of a symbol.
-  (with-temp-buffer
-    (insert "(foo bar)")
-    (goto-char (point-min))
-    ;; Point at end of the 'bar'.
-    (search-forward "r")
-
-    (should
-     (equal
-      (elisp-def--source-with-placeholder
-       (point-min) (point-max) 'placeholder)
-      "(foo placeholder)"))))
 
 (defun elisp-def--join-and (items)
   "Join a list of strings with commas and \"and\"."
@@ -575,102 +418,6 @@ for macro-expanding."
         ;; For any sublist that didn't contain XXX, we will have
         ;; returned nil. Find the non-empty list, if any.
         (-first #'consp bindings-found)))))
-
-(ert-deftest elisp-def--bound-syms--lambda ()
-  (should
-   (equal
-    (elisp-def--bound-syms '(lambda (x y) XXX) 'XXX)
-    (list 'x 'y)))
-  (should
-   (equal
-    (elisp-def--bound-syms '(lambda (x &optional y &rest z) XXX) 'XXX)
-    (list 'x 'y 'z))))
-
-(ert-deftest elisp-def--bound-syms--let ()
-  ;; Handle bindings introduced by let.
-  (should
-   (equal
-    (elisp-def--bound-syms '(let (x y) XXX) 'XXX)
-    (list 'x 'y)))
-  (should
-   (equal
-    (elisp-def--bound-syms '(let ((x 1) (y)) XXX)  'XXX)
-    (list 'x 'y)))
-  ;; Don't consider previous bindings in the same let.
-  (should
-   (equal
-    (elisp-def--bound-syms
-     '(let ((x 1))
-        (let ((y 2)
-              (z (+ XXX 1)))
-          2))
-     'XXX)
-    (list 'x)))
-  ;; If our placeholder is in the variable position, still consider
-  ;; previous keybindings.
-  (should
-   (equal
-    (elisp-def--bound-syms
-     '(let ((x 1))
-        (let (XXX)
-          3))
-     'XXX)
-    (list 'x)))
-  (should
-   (equal
-    (elisp-def--bound-syms
-     '(let ((x 1))
-        (let ((XXX 2))
-          3))
-     'XXX)
-    (list 'x))))
-
-(ert-deftest elisp-def--bound-syms--let* ()
-  (should
-   (equal
-    (elisp-def--bound-syms '(let* (x y) XXX) 'XXX)
-    (list 'x 'y)))
-  (should
-   (equal
-    (elisp-def--bound-syms '(let* ((x 1) (y)) XXX)  'XXX)
-    (list 'x 'y)))
-  (should
-   (equal
-    (elisp-def--bound-syms
-     '(let ((x 1))
-        (let* ((y 2)
-               (z (+ XXX 1)))
-          2))
-     'XXX)
-    (list 'x 'y)))
-  (should
-   (equal
-    (elisp-def--bound-syms
-     '(let* ((x 1))
-        (let* ((XXX 2))
-          3))
-     'XXX)
-    (list 'x))))
-
-(ert-deftest elisp-def--bound-syms--condition-case ()
-  (should
-   (equal
-    (elisp-def--bound-syms
-     '(condition-case x (XXX) y)
-     'XXX)
-    nil))
-  (should
-   (equal
-    (elisp-def--bound-syms
-     '(condition-case x y (XXX))
-     'XXX)
-    (list 'x))))
-
-(ert-deftest elisp-def--bound-syms--progn ()
-  (should
-   (equal
-    (elisp-def--bound-syms '(progn (x y) XXX) 'XXX)
-    nil)))
 
 (defun elisp-def--symbol-at-point ()
   "Get the symbol at point, even if we're on a quoted or
