@@ -1,4 +1,4 @@
-# elisp-def
+# elisp-def [![Build Status](https://travis-ci.org/Wilfred/elisp-def.svg?branch=master)](https://travis-ci.org/Wilfred/elisp-def)
 
 Go to the definition of the symbol at point, intelligently handling
 macros, and distinguishing functions from variables.
