@@ -22,9 +22,7 @@
 
 ;; Find the definition of the symbol at point, intelligently.
 ;;
-;; TODO: macro-expand and work out what bindings we are in.
 ;; TODO: fonts
-;; TODO: jump to definition of 'foo even when point is on '.
 
 ;;; Code:
 
