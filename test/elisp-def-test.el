@@ -2,6 +2,26 @@
 
 (require 'elisp-def)
 
+(ert-deftest elisp-def--let-bind-index ()
+  (should
+   (= 2
+      (elisp-def--let-bind-index
+       '(let ((x 1)
+              (y 2)
+              (x 3))
+          placeholder)
+       'x
+       'placeholder)))
+  (should
+   (= 0
+      (elisp-def--let-bind-index
+       '(let ((x 1)
+              (x (placeholder))
+              (x 3))
+          y)
+       'x
+       'placeholder))))
+
 (defmacro elisp-def--with-temp-buffer (src &rest body)
   (declare (indent 1) (debug t))
   `(with-temp-buffer

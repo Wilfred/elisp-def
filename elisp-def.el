@@ -502,13 +502,48 @@ wrong place. This should be very rare."
           (when (memq sym bound-syms)
             (throw 'found start)))))))
 
-(defun elisp-def--go-to-definition (form-start sym)
-  "Move point to the symbol after FORM-START that defines the
-variable SYM. Point is put on the first character of that symbol.
+(defun elisp-def--let-bind-index (form real-sym placeholder)
+  "Given a let or let* FORM containing a PLACEHOLDER symbol,
+return the 0-based index of the relevant binding.
+
+Examples (assuming REAL-SYM is `x'):
+
+\(let* ((x 1)
+       (y 2)
+       (x 3)) ; 2, because this is the relevant binding
+    (placeholder))
+
+\(let* ((x 1)
+       (x (+ placeholder 1)) ; 0, because the previous binding applies
+       (x 3))
+  z)
+
+We assume that PLACEHOLDER only occurs in the body for `let'
+forms, but may occur as a binding value in `let*' forms."
+  (catch 'done
+    (-let (((_ var-vals . _body) form)
+           (index nil))
+      (--each-indexed var-vals
+        (cond
+         ((symbolp it)
+          (when (eq it real-sym)
+            (setq index it-index)))
+         (t
+          (-let [(var val) it]
+            (when (-contains-p (-flatten val) placeholder)
+              (throw 'done index))
+            (when (eq var real-sym)
+              (setq index it-index))))))
+      index)))
+
+(defun elisp-def--go-to-bind-definition (form-start sym-pos)
+  "Move point to the symbol after FORM-START that binds the
+variable at SYM-POS. Point is put on the first character of that symbol.
 
 For example, if | is point:
 
 \(defun foo ())
+\(fo|o)
 
 =>
 
@@ -524,30 +559,62 @@ Or for let-bound variables:
 
 \(let ((|x 1))
   (foo x))"
-  (let (form form-end)
+  (goto-char sym-pos)
+  (let ((sym (elisp-def--symbol-at-point))
+        form form-end)
     (save-excursion
       (goto-char form-start)
       (setq form (read (current-buffer)))
-
-      ;; `read' moves point over the current form.
+      ;; `read' moves point over the form.
       (setq form-end (point)))
 
+    ;; If the enclosing form is a `let', we can calculate exactly which
+    ;; binding to move to. Move to the start of that binding.
     (if (memq (car form) (list 'let 'let*))
-        (user-error "todo")
-      ;; Otherwise, we assume the first occurrence of the symbol is
-      ;; the definition. Move to that symbol.
-      (goto-char form-start)
-      (when
-          (re-search-forward
-           (rx-to-string `(seq symbol-start ,(symbol-name sym) symbol-end))
-           form-end
-           nil)
-        (backward-sexp)))))
+        (let* ((placeholder (elisp-def--fresh-placeholder))
+               (source (elisp-def--source-with-placeholder
+                        form-start form-end placeholder))
+               (form-with-placeholder (read source))
+               (index (elisp-def--let-bind-index
+                       form-with-placeholder
+                       sym
+                       placeholder)))
+          (goto-char form-start)
+          ;; Move past the "(let"
+          (forward-char)
+          (forward-sexp)
+
+          ;; Move to the opening paren of the var-vals list, stepping
+          ;; over any whitespace or comments.
+          (forward-sexp)
+          (backward-sexp)
+
+          ;; Now move to the INDEXth var-val pair.
+          (forward-char)
+          (forward-sexp index)
+
+          ;; Ensure we're on the opening paren.
+          (forward-sexp)
+          (backward-sexp))
+
+      ;; Otherwise, we have to assume the first occurrence of the
+      ;; symbol is the definition. This is a heuristic, but it works
+      ;; for many macros like `destructuring-bind'.
+      (goto-char form-start))
+
+    ;; Move to the first occurrence of SYM after point.
+    (when
+        (re-search-forward
+         (rx-to-string `(seq symbol-start ,(symbol-name sym) symbol-end))
+         sym-pos
+         nil)
+      (backward-sexp))))
 
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
-  (let* ((sym (elisp-def--symbol-at-point))
+  (let* ((init-pos (point))
+         (sym (elisp-def--symbol-at-point))
          (sym-name (symbol-name sym))
          ;; Try to find the namespace by macro expanding the code.
          (namespace (elisp-def--namespace-at-point)))
@@ -600,7 +667,8 @@ Or for let-bound variables:
 
     ;; Point is now at the start of line where SYM is defined. Work
     ;; out the position of the definition SYM, and flash it.
-    (elisp-def--go-to-definition (point) sym)
+    (when (eq namespace 'bound)
+      (elisp-def--go-to-bind-definition (point) init-pos))
     (let (sym-end-pos)
       (save-excursion
         (forward-sexp)
