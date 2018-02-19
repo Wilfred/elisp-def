@@ -617,8 +617,20 @@ Or for let-bound variables:
         (setq sym-end-pos (point)))
       (elisp-def--flash-region (point) sym-end-pos))))
 
-;; Overriding xref-find-definitions.
-(define-key lisp-mode-map (kbd "M-.") #'elisp-def)
+(define-minor-mode elisp-def-mode
+  "Minor mode for finding definitions with `elisp-def'.
+
+\\{elisp-def-mode-map}")
+
+(defvar elisp-def-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "M-.") #'elisp-def)
+    (define-key map (kbd "M-,") #'xref-pop-marker-stack)
+    map)
+  "Keymap used in `elisp-def-mode'.")
+
+(dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
+  (add-hook hook #'elisp-def-mode))
 
 (provide 'elisp-def)
 ;;; elisp-def.el ends here
