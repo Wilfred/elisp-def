@@ -202,7 +202,9 @@ quoted variables, because they aren't being used at point."
 
     ;; Otherwise, macro expand the source at point and look at how the
     ;; symbol is used.
-    (-let* (((form-start form-end) (elisp-def--defun-start))
+    (-let* ((ppss (syntax-ppss))
+            ((form-start form-end) (elisp-def--enclosing-form
+                                    (syntax-ppss-depth ppss)))
             (placeholder (elisp-def--fresh-placeholder))
             (src (elisp-def--source-with-placeholder form-start form-end placeholder))
             (form (condition-case nil
@@ -288,16 +290,6 @@ the symbol _name_ is unused."
    (format
     "elisp-def--fresh-placeholder-%s"
     elisp-def--placeholder-num)))
-
-(defun elisp-def--defun-start ()
-  "Find the start of the top-level form enclosing point."
-  (let (start end)
-    (save-excursion
-      (beginning-of-defun)
-      (setq start (point))
-      (end-of-defun)
-      (setq end (point)))
-    (list start end)))
 
 (defun elisp-def--source-with-placeholder (start end placeholder)
   "Return the source between START and END in the current buffer,
