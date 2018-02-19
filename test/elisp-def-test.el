@@ -149,6 +149,10 @@
   (should
    (eq (elisp-def--use-position '(let (foo) (bar)) 'foo)
        'definition))
+  ;; let* can reference previous bindings.
+  (should
+   (eq (elisp-def--use-position '(let (()) (bar)) 'foo)
+       'definition))
   ;; Lambdas parameters are definitions.
   (should
    (eq (elisp-def--use-position '(lambda (foo) 1) 'foo)
@@ -241,14 +245,21 @@
     (list 'x))))
 
 (ert-deftest elisp-def--bound-syms--let* ()
+  ;; Basic case: all the variables bound.
   (should
    (equal
     (elisp-def--bound-syms '(let* (x y) XXX) 'XXX)
+    (list 'x 'y)))
+  ;; The variables before, but not the variables after.
+  (should
+   (equal
+    (elisp-def--bound-syms '(let* (x y XXX z) abc) 'XXX)
     (list 'x 'y)))
   (should
    (equal
     (elisp-def--bound-syms '(let* ((x 1) (y)) XXX)  'XXX)
     (list 'x 'y)))
+  ;; Nested lets.
   (should
    (equal
     (elisp-def--bound-syms

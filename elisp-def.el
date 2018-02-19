@@ -243,7 +243,7 @@ Assumes FORM has been macro-expanded."
       'definition)
      ;; Let forms can introduce definitions too.
      ((and (memq (car form) (list 'let 'let*))
-           (-let [bindings (cadr form)]
+           (-let [(_let bindings . _body) form]
              (--any-p
               (or
                ;; (let (foo ...) ...)
@@ -324,7 +324,7 @@ but with the symbol at point replaced by symbol PLACEHOLDER."
             (s-join ", " (-drop-last 1 items))
             (-last-item items)))))
 
-(defun elisp-def--bound-syms (form sym &optional accum)
+(defun elisp-def--bound-syms-1 (form sym accum)
   "Return a list of bound symbols around the symbol SYM in FORM.
 
 We only find bindings from special forms, caller is responsible
@@ -336,101 +336,99 @@ for macro-expanding."
       (throw 'done accum))
 
     (when (consp form)
-      (let (bindings-found)
-        ;; If this is a lambda form, the enclosed forms have the parameters
-        ;; too.
-        (cond
-         ((eq (car form) 'lambda)
-          (-let [(_ args . body) form]
-            (setq args
-                  (--remove (member it '(&optional &rest)) args))
-            (setq bindings-found
-                  (--map (elisp-def--bound-syms it sym (append accum args))
-                         body))))
-         ;; (let ((x y)) z)
-         ;; We know that x is bound when we evaluate z, but not when we
-         ;; evaluate y.
-         ((eq (car form) 'let)
-          (-let* (((_ var-vals . body) form)
-                  (vars nil))
-            (--each var-vals
-              (if (consp it)
-                  (-let [(var val) it]
-                    (when (eq var 'XXX)
-                      (throw 'done accum))
-                    ;; `x' will be bound in the body.
-                    (push var vars)
-                    ;; `y' will be evaluated without `x' bound.
-                    (push (elisp-def--bound-syms val sym accum)
-                          bindings-found))
-                ;; Otherwise, a variable without a binding, like `z' in
-                ;; our example.
-                (when (eq it 'XXX)
-                  (throw 'done accum))
-                (push it vars)))
-            (setq vars (nreverse vars))
-            (setq bindings-found
-                  (append
-                   (nreverse bindings-found)
-                   (--map (elisp-def--bound-syms it sym (append accum vars))
-                          body)))))
-         ;; Handle `let*' forms, including bindings introduced by
-         ;; previous vars.
-         ((eq (car form) 'let*)
-          (-let* (((_ var-vals . body) form)
-                  (accum-with-vars accum)
-                  (vars nil))
-            (--each var-vals
-              ;; E.g. (let* ((x a) (y b) z) c)
-              (if (consp it)
-                  (-let [(var val) it]
-                    (when (eq var 'XXX)
-                      (throw 'done accum))
-                    ;; `x' will be bound in the body.
-                    (push var vars)
-                    ;; `a' will be evaluated without `x' bound.
-                    (push (elisp-def--bound-syms val sym accum-with-vars)
-                          bindings-found)
-                    ;; `x' will be bound when evaluating `b' on the next
-                    ;; iteration.
-                    (setq accum-with-vars
-                          (append accum-with-vars (list var))))
-                ;; Otherwise, a variable without a binding, like `z' in
-                ;; our example.
-                (when (eq it 'XXX)
-                  (throw 'done accum))
-                (push it vars)))
-            (setq vars (nreverse vars))
-            (setq bindings-found
-                  (append
-                   (nreverse bindings-found)
-                   (--map (elisp-def--bound-syms it sym (append accum vars))
-                          body)))))
-         ;; Handle `condition-case', the only other special form that
-         ;; can introduce bindings.
-         ((eq (car form) 'condition-case)
-          (-let [(_ var bodyform . handlers) form]
-            (when (eq var 'XXX)
-              (throw 'done accum))
-            (setq bindings-found
-                  (cons
-                   (elisp-def--bound-syms bodyform sym accum)
-                   (--map (elisp-def--bound-syms it sym (append accum (list var)))
-                          handlers)))))
+      (cond
+       ;; If this is a lambda form, the enclosed forms have the parameters
+       ;; too.
+       ((eq (car form) 'lambda)
+        (-let [(_ args . body) form]
+          (setq args
+                (--remove (member it '(&optional &rest)) args))
+          ;; If we found SYM in the parameters, we're done.
+          (--each args
+            (if (eq it sym)
+                (throw 'done accum)))
+          ;; Otherwise, add ARGS to the accumulated list and recurse.
+          (--each body
+            (-when-let (accum (elisp-def--bound-syms-1 it sym (append (reverse args) accum)))
+              (throw 'done accum)))))
+       ;; (let ((x y)) z)
+       ;; We know that x is bound when we evaluate z, but not when we
+       ;; evaluate y.
+       ((eq (car form) 'let)
+        (-let* (((_ var-vals . body) form)
+                (vars nil))
+          (--each var-vals
+            (if (consp it)
+                (-let [(var val) it]
+                  (when (eq var 'XXX)
+                    (throw 'done accum))
+                  ;; `x' will be bound in the body.
+                  (push var vars)
+                  ;; Values in `let' bindings cannot have previous
+                  ;; bindings, so pass ACCUM. If we see SYM in the
+                  ;; value, we're done.
+                  (-when-let (accum (elisp-def--bound-syms-1 val sym accum))
+                    (throw 'done accum)))
+              ;; Otherwise, a variable without a binding, like `z' in
+              ;; our example.
+              (when (eq it 'XXX)
+                (throw 'done accum))
+              (push it vars)))
+          ;; Recurse on the body of the let.
+          (--each body
+            (-when-let (accum (elisp-def--bound-syms-1 it sym (append vars accum)))
+              (throw 'done accum)))))
+       ;; Handle `let*' forms, including bindings introduced by
+       ;; previous vars.
+       ((eq (car form) 'let*)
+        (-let* (((_ var-vals . body) form))
+          (--each var-vals
+            ;; E.g. (let* ((x a) (y b) z) c)
+            (if (consp it)
+                (-let [(var val) it]
+                  (when (eq var 'XXX)
+                    (throw 'done accum))
+                  ;; `a' will be evaluated without `x' bound.
+                  (-when-let (accum (elisp-def--bound-syms-1 val sym accum))
+                    (throw 'done accum))
+                  ;; But `x' will be bound when evaluating `b'.
+                  (setq accum (cons var accum)))
+              ;; Otherwise, a variable without a binding, like `z' in
+              ;; our example.
+              (when (eq it 'XXX)
+                (throw 'done accum))
+              (setq accum (cons it accum))))
+          (--each body
+            (-when-let (accum (elisp-def--bound-syms-1 it sym accum))
+              (throw 'done accum)))))
+       ;; Handle `condition-case', the only other special form that
+       ;; can introduce bindings.
+       ((eq (car form) 'condition-case)
+        (-let [(_ var bodyform . handlers) form]
+          (when (eq var 'XXX)
+            (throw 'done accum))
+          ;; VAR is not bound when BODYFORM is evaluated.
+          (-when-let (accum (elisp-def--bound-syms-1 bodyform sym accum))
+            (throw 'done accum))
+          (--each handlers
+            (-when-let (accum (elisp-def--bound-syms-1 it sym (cons var accum)))
+              (throw 'done accum)))))
 
-         ;; For other forms (`progn' etc) then just recurse to see if it
-         ;; contains XXX. We know that it introduces no new bindings. It is
-         ;; actually possible to introduce a global with `setq', but we
-         ;; ignore that.
-         (t
-          (when (ert--proper-list-p form)
-            (setq bindings-found
-                  (--map (elisp-def--bound-syms it sym accum)
-                         form)))))
+       ;; For other forms (`progn' etc) then just recurse to see if it
+       ;; contains SYM. We know that it introduces no new bindings. It is
+       ;; actually possible to introduce a global with `setq', but we
+       ;; ignore that.
+       ((ert--proper-list-p form)
+        (--each form
+          (-when-let (accum (elisp-def--bound-syms-1 it sym accum))
+            (throw 'done accum))))))))
 
-        ;; For any sublist that didn't contain XXX, we will have
-        ;; returned nil. Find the non-empty list, if any.
-        (-first #'consp bindings-found)))))
+(defun elisp-def--bound-syms (form sym)
+  "Return a list of bound symbols around the symbol SYM in FORM.
+
+We only find bindings from special forms, caller is responsible
+for macro-expanding."
+  (nreverse (elisp-def--bound-syms-1 form sym nil)))
 
 (defun elisp-def--symbol-at-point ()
   "Get the symbol at point, even if we're on a quoted or
