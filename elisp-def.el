@@ -670,7 +670,7 @@ Or for let-bound variables:
            nil
            t)
         (setq sym-end-pos (point))
-        (backward-symbol))
+        (backward-sexp))
 
       (when sym-end-pos
         ;; TODO: this doesn't work properly in c-mode buffers. It
