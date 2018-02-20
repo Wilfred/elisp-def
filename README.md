@@ -1,7 +1,7 @@
 # elisp-def [![Build Status](https://travis-ci.org/Wilfred/elisp-def.svg?branch=master)](https://travis-ci.org/Wilfred/elisp-def)
 
-Go to the definition of the symbol at point, intelligently handling
-macros, and distinguishing functions from variables.
+Go to the definition of the symbol at point. Supports global
+definitions, local definitions, and even macro-heavy code!
 
 ![screenshot](screenshot.png)
 
