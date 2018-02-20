@@ -213,6 +213,20 @@
        'function))
   (should
    (eq (elisp-def--use-position '(mapcar 'foo bar) 'foo)
+       'function))
+  ;; The first sexp in a cond clause is an expression, not a
+  ;; function call.
+  (should
+   (eq (elisp-def--use-position
+        '(cond (foo 1))
+        'foo)
+       'variable))
+  ;; The first sexp in a cond clause may still contain a function
+  ;; call.
+  (should
+   (eq (elisp-def--use-position
+        '(cond (bar 1) ((foo) 1))
+        'foo)
        'function)))
 
 (ert-deftest elisp-def--source-with-placeholder ()

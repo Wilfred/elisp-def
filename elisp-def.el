@@ -260,6 +260,12 @@ Assumes FORM has been macro-expanded."
       (if (ert--proper-list-p (cdr form))
           (--any (elisp-def--use-position it sym t) (cdr form))
         (elisp-def--use-position (cdr form) sym t)))
+     ;; (cond (x 1) ((foo-p) 2))
+     ;; In this case, x is not a function.
+     ((eq (car form) 'cond)
+      (-let* (((_cond . clauses) form)
+              (expressions (apply #'append clauses)))
+        (--any (elisp-def--use-position it sym quoted) expressions)))
      ;; Recurse on the form to see if any arguments contain SYM.
      (t
       (if (ert--proper-list-p form)
