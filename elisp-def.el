@@ -638,9 +638,7 @@ Or for let-bound variables:
              (elisp-def--find-feature sym))
             ((eq namespace 'variable)
              (elisp-def--find-variable sym))
-            ;; TODO: is treating quoted symbols as functions always
-            ;; correct?
-            ((memq namespace '(function quoted))
+            ((eq namespace 'function)
              (elisp-def--find-function sym)))]
       (unless (and buf pos)
         ;; todo: mention if it's due to being a primitive
