@@ -3,6 +3,8 @@
 Go to the definition of the symbol at point, intelligently handling
 macros, and distinguishing functions from variables.
 
+![screenshot](screenshot.png)
+
 `elisp-def` statically analyses your code, and falls back to
 heuristics where that's not possible. It should work 99% of the time,
 so please file bugs if it can't find definitions for your code.
