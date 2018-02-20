@@ -247,6 +247,11 @@ Assumes FORM has been macro-expanded."
      ((and (eq (car form) 'require)
            (equal (car-safe (cdr form)) `(quote ,sym)))
       'library)
+     ;; Explicit call to a function that is known to take a function
+     ;; argument.
+     ((and (memq (car form) '(funcall apply mapcar mapc))
+           (equal (car-safe (cdr form)) `(quote ,sym)))
+      'function)
      ((eq (car form) sym)
       ;; Function call for the symbol we're looking for.
       (if quoted 'quoted 'function))

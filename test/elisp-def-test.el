@@ -206,7 +206,14 @@
        'definition))
   (should
    (eq (elisp-def--use-position '(lambda (foo bar) 1) 'bar)
-       'definition)))
+       'definition))
+  ;; Known higher-order functions with function arguments.
+  (should
+   (eq (elisp-def--use-position '(funcall 'foo) 'foo)
+       'function))
+  (should
+   (eq (elisp-def--use-position '(mapcar 'foo bar) 'foo)
+       'function)))
 
 (ert-deftest elisp-def--source-with-placeholder ()
   ;; Point at the beginning of a symbol.
