@@ -164,15 +164,6 @@ Note that macros are in the same namespace as functions."
       (push 'function result))
     result))
 
-;; TODO: consider the following example:
-
-;; (cl-labels ((foo (x y) (+ x y)))
-;;   (foo 1 2))
-;;
-;; If you expand this, you can see `cl-labels' replaces foo with
-;; --cl-foo-- so we can't identify where foo is defined or whether
-;; it's a function call or a variable.
-
 (defun elisp-def--sharp-quoted-p ()
   "Is the symbol at point of the form #'foo?"
   (save-excursion
