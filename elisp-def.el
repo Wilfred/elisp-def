@@ -594,6 +594,7 @@ Or for let-bound variables:
       ;; for many macros like `destructuring-bind'.
       (goto-char form-start))))
 
+;;;###autoload
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
   (interactive)
@@ -667,6 +668,7 @@ Or for let-bound variables:
         ;; works for e.g. `point', but not for `re-search-forward'.
         (elisp-def--flash-region (point) sym-end-pos)))))
 
+;;;###autoload
 (define-minor-mode elisp-def-mode
   "Minor mode for finding definitions with `elisp-def'.
 
