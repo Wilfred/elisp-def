@@ -44,6 +44,18 @@
     (should
      (looking-at "x 3"))))
 
+(ert-deftest elisp-def--let ()
+  "Ensure we go to the right position in let forms."
+  (elisp-def--with-temp-buffer "(defun foo ()
+  (let ((x 1))
+    (let ((x 2)
+          (y (+ x 1))))))"
+    (search-forward "+ x")
+    (backward-char)
+    (elisp-def)
+    (should
+     (looking-at "x 1"))))
+
 (ert-deftest elisp-def--defun ()
   "Ensure we go to the right position in defun forms."
   (elisp-def--with-temp-buffer "(defun demo/foo ()
