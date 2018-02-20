@@ -538,7 +538,8 @@ forms, but may occur as a binding value in `let*' forms."
 
 (defun elisp-def--go-to-bind-definition (form-start sym-pos)
   "Move point to the symbol after FORM-START that binds the
-variable at SYM-POS. Point is put on the first character of that symbol.
+variable at SYM-POS. Point is put on the first paren before the
+variable.
 
 For example, if | is point:
 
@@ -547,7 +548,7 @@ For example, if | is point:
 
 =>
 
-\(defun |foo ())
+|(defun foo ())
 \(foo)
 
 Or for let-bound variables:
@@ -557,7 +558,7 @@ Or for let-bound variables:
 
 =>
 
-\(let ((|x 1))
+\(let (|(x 1))
   (foo x))"
   (goto-char sym-pos)
   (let ((sym (elisp-def--symbol-at-point))
@@ -600,15 +601,7 @@ Or for let-bound variables:
       ;; Otherwise, we have to assume the first occurrence of the
       ;; symbol is the definition. This is a heuristic, but it works
       ;; for many macros like `destructuring-bind'.
-      (goto-char form-start))
-
-    ;; Move to the first occurrence of SYM after point.
-    (when
-        (re-search-forward
-         (rx-to-string `(seq symbol-start ,(symbol-name sym) symbol-end))
-         sym-pos
-         nil)
-      (backward-sexp))))
+      (goto-char form-start))))
 
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
@@ -665,15 +658,23 @@ Or for let-bound variables:
       (switch-to-buffer buf)
       (goto-char pos))
 
-    ;; Point is now at the start of line where SYM is defined. Work
-    ;; out the position of the definition SYM, and flash it.
     (when (eq namespace 'bound)
       (elisp-def--go-to-bind-definition (point) init-pos))
+
+    ;; Move to the first occurrence of SYM after point.
     (let (sym-end-pos)
-      (save-excursion
-        (forward-sexp)
-        (setq sym-end-pos (point)))
-      (elisp-def--flash-region (point) sym-end-pos))))
+      (when
+          (re-search-forward
+           (rx-to-string `(seq symbol-start ,(symbol-name sym) symbol-end))
+           nil
+           t)
+        (setq sym-end-pos (point))
+        (backward-symbol))
+
+      (when sym-end-pos
+        ;; TODO: this doesn't work properly in c-mode buffers. It
+        ;; works for e.g. `point', but not for `re-search-forward'.
+        (elisp-def--flash-region (point) sym-end-pos)))))
 
 (define-minor-mode elisp-def-mode
   "Minor mode for finding definitions with `elisp-def'.

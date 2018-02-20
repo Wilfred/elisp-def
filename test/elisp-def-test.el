@@ -30,6 +30,33 @@
      (goto-char (point-min))
      ,@body))
 
+(ert-deftest elisp-def--let* ()
+  "Ensure we go to the right position in let* forms."
+  (elisp-def--with-temp-buffer "(defun foo ()
+  (let* ((x 1)
+         (y 2)
+         ;; comment containing x
+         (x 3))
+    (+ x 1)))"
+    (search-forward "+ x")
+    (backward-char)
+    (elisp-def)
+    (should
+     (looking-at "x 3"))))
+
+(ert-deftest elisp-def--defun ()
+  "Ensure we go to the right position in defun forms."
+  (elisp-def--with-temp-buffer "(defun demo/foo ()
+  nil)
+\(defun demo/bar ()
+  (demo/foo))"
+    (eval-buffer)
+    (search-forward "(demo/foo)")
+    (backward-char)
+    (elisp-def)
+    (should
+     (looking-at "demo/foo"))))
+
 (ert-deftest elisp-def--symbol-at-point ()
   ;; Symbol at point or quoted symbol.
   (dolist (src '("foo" "#'foo"))
@@ -323,5 +350,7 @@
    (equal
     (elisp-def--find-function 'no-such-func)
     (list nil nil))))
+
+;; TODO: test primitive functions.
 
 ;;; elisp-def-test.el ends here
