@@ -200,7 +200,8 @@ symbol disappears entirely.
 ## Thanks/Inspirations
 
 * [elisp-slime-nav](https://github.com/purcell/elisp-slime-nav)
-* `xref` (part of Emacs core)
+* The integration between `emacs-lisp-mode` and `xref` (part of Emacs
+  core)
 
 The fine folks on `#emacs` for answering my questions on elisp
 esoterica, particularly Wasamasa.
