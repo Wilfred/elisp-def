@@ -196,9 +196,9 @@
   (should
    (eq (elisp-def--use-position '(let (foo) (bar)) 'foo)
        'definition))
-  ;; let* can reference previous bindings.
+  ;; let* variable declarations.
   (should
-   (eq (elisp-def--use-position '(let (()) (bar)) 'foo)
+   (eq (elisp-def--use-position '(let ((foo (bar))) (baz)) 'foo)
        'definition))
   ;; Lambdas parameters are definitions.
   (should
