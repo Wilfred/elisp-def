@@ -3,14 +3,14 @@
 Go to the definition of the symbol at point, intelligently handling
 macros, and distinguishing functions from variables.
 
-It statically analyses your code, and falls back to heuristics. It
-should work 99% of the time, so please file bugs if it can't find
-definitions for your code.
+`elisp-def` statically analyses your code, and falls back to
+heuristics where that's not possible. It should work 99% of the time,
+so please file bugs if it can't find definitions for your code.
 
-## Find Definitions
+## Global Definitions
 
-`elisp-def` will find the definition of functions and global variables
-at point.
+`elisp-def` will find the definition of global functions and global
+variables at point.
 
 ``` emacs-lisp
 (defun demo/foo ()
@@ -93,6 +93,17 @@ if possible.
     ;; `elisp-def' on the BAR below will move point to the function
     ;; parameters line.
     (setq bar 3)))
+
+(defun demo/bar ()
+  (let* ((foo 1)
+         (bar 2)
+         (foo 3)
+         ;; `elisp-def' on the second FOO on the following line will
+         ;; move point to the relevant binding, which is the line
+         ;; immediately above.
+         (foo (+ foo 1))
+         (foo 5))
+    nil))
 ```
 
 This even works with macros that introduce bindings.
@@ -111,8 +122,27 @@ This even works with macros that introduce bindings.
     (message "first is %s" first)))
 ```
 
-`elisp-def` handles nested `let`, `let*` and `condition-case`
-intelligently too.
+## Ergonomics
+
+`elisp-def` allows you to put point on quoted symbols, docstring
+symbols or backquoted symbols.
+
+``` emacs-lisp
+(defun demo/foo (x)
+  ;; `elisp-def' on X below will find the parameter.
+  "Adds one to X and returns it."
+  (1+ x))
+
+(defun demo/bar ()
+  ;; `elisp-def' can find demo/foo even when point is on the #.
+  (funcall #'demo/foo 1)
+  ;; `elisp-def' on demo/foo below will find the function.
+  ;; See `demo/foo' for more information.
+  (1+ bar))
+```
+
+When it finds the symbol, it will also temporarily highlight it for
+visibility.
 
 ## Caveats
 
@@ -131,13 +161,39 @@ intelligently too.
 ;; Since `c-version' is both a function and a variable, and we're not
 ;; using a sharp-quote #'c-version, we have to prompt the user.
 (demo/calls-fn 'c-version)
+
+(defun demo/foo (c-version)
+  ;; Here we have no idea whether we're using `c-version' as a
+  ;; function (e.g. funcall), as a variable (e.g. set) or as a
+  ;; parameter (e.g. eval).
+  (bar 'c-version nil))
 ```
 
-Macros that rewrite bodies will fail, such as `cl-labels`.
+`elisp-def` cannot find definitions in macros with `let*` semantics
+and duplicated variables.
 
-Let macros that repeat bindings.
+``` emacs-lisp
+(require 'dash)
 
-Quoted symbols.
+(defun demo/foo ()
+  (-let ((x 1)
+         (x 2))
+    ;; `elisp-def' on X below will move to the first X binding, rather
+    ;; than the second.
+    x))
+```
+
+`elisp-def` also cannot handle macros that rewrite forms such that the
+symbol disappears entirely.
+
+``` emacs-lisp
+(eval-when-compile (require 'cl-lib))
+
+(cl-labels ((foo (x y) (+ x y)))
+  ;; `cl-labels' completely rewrites this body to (--cl-foo-- 1 2), so
+  ;; `elisp-def' can't find the definition of FOO.
+  (foo 1 2))
+```
 
 ## Thanks/Inspirations
 
