@@ -131,7 +131,7 @@ symbols or backquoted symbols.
 
 ``` emacs-lisp
 (defun demo/foo (x)
-  ;; `elisp-def' on X below will find the parameter.
+  ;; `elisp-def' on X in the docstring will find the parameter.
   "Adds one to X and returns it."
   (1+ x))
 
