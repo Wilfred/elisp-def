@@ -86,8 +86,8 @@
         (elisp-def--symbol-at-point)
         'foo))))
   ;; Docstring conventions, where FOO means a parameter named `foo'..
-  (elisp-def--with-temp-buffer "\"FOO\""
-    (search-forward "f")
+  (elisp-def--with-temp-buffer "\"Return FOO.\""
+    (search-forward "F")
     (should
      (eq
       (elisp-def--symbol-at-point)

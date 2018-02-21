@@ -450,7 +450,8 @@ sharp-quoted symbol."
            (or in-string in-comment)
            (not (or (boundp sym) (fboundp sym)))
            (s-uppercase? (symbol-name sym)))
-      (setq sym (intern (downcase (symbol-name sym)))))
+      (setq sym (intern
+                 (s-chop-suffix "." (downcase (symbol-name sym))))))
     sym))
 
 (defun elisp-def--enclosing-form (depth)
