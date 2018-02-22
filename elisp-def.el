@@ -442,16 +442,29 @@ sharp-quoted symbol."
             (when (looking-at (rx "'"))
               (forward-char))
             (symbol-at-point)))
+         (symbol-name (symbol-name sym))
          (ppss (syntax-ppss))
          (in-string (nth 3 ppss))
          (in-comment (nth 4 ppss)))
-    ;; Handle FOO in docstrings.
-    (when (and
-           (or in-string in-comment)
-           (not (or (boundp sym) (fboundp sym)))
-           (s-uppercase? (symbol-name sym)))
-      (setq sym (intern
-                 (s-chop-suffix "." (downcase (symbol-name sym))))))
+    (when (or in-string in-comment)
+      ;; Ignore a trailing . as it's common in docstrings but rare to
+      ;; have a dot in symbols.
+      (unless (or (boundp sym) (fboundp sym))
+        (setq symbol-name (s-chop-suffix "." symbol-name))
+        (setq sym (intern symbol-name)))
+
+      ;; Convert FOO to foo in docstrings.
+      (unless (or (boundp sym) (fboundp sym))
+        (setq symbol-name (downcase symbol-name))
+        (setq sym (intern symbol-name)))
+
+      ;; Discard {}. This is a legal symbol constituent, but more
+      ;; likely to be a \\{foo} than a user-defined symbol called
+      ;; {foo}.
+      (unless (or (boundp sym) (fboundp sym))
+        (setq symbol-name
+              (s-replace-all '(("{" . "") ("}" . "")) symbol-name))
+        (setq sym (intern symbol-name))))
     sym))
 
 (defun elisp-def--enclosing-form (depth)

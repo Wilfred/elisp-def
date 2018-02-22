@@ -91,7 +91,15 @@
     (should
      (eq
       (elisp-def--symbol-at-point)
-      'foo))))
+      'foo)))
+  ;; {} is actually legal in an elisp symbol, but in a docstring it's
+  ;; almost certainly not part of the symbol name.
+  (elisp-def--with-temp-buffer "\"\\{foo-mode-map}\""
+    (search-forward "f")
+    (should
+     (eq
+      (elisp-def--symbol-at-point)
+      'foo-mode-map))))
 
 (ert-deftest elisp-def--sharp-quoted-p ()
   (elisp-def--with-temp-buffer "#'abc"
