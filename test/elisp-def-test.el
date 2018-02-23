@@ -184,23 +184,7 @@ strings."
 
     (should
      (eq (elisp-def--namespace-at-point)
-         'library)))
-
-  ;; Treat docstrings and comments as quoted.
-  (elisp-def--with-temp-buffer ";; `foo'"
-    (search-forward "f")
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'quoted)))
-  (elisp-def--with-temp-buffer ";; `foo'"
-    (search-forward "f")
-    (eq (elisp-def--namespace-at-point)
-        'quoted))
-  (elisp-def--with-temp-buffer "\"FOO\""
-    (search-forward "F")
-    (should
-     (eq (elisp-def--namespace-at-point)
-         'quoted))))
+         'library))))
 
 (ert-deftest elisp-def--use-position ()
   (should

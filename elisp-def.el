@@ -183,14 +183,6 @@ quoted variables, because they aren't being used at point."
     (if (elisp-def--sharp-quoted-p)
         (throw 'done 'function))
 
-    ;; If we're in a string or comment, we can't infer anything about
-    ;; the namespace, so just treat it as quoted.
-    (let* ((ppss (syntax-ppss))
-           (in-string (nth 3 ppss))
-           (in-comment (nth 4 ppss)))
-      (when (or in-string in-comment)
-        (throw 'done 'quoted)))
-
     ;; Otherwise, macro expand the source at point and look at how the
     ;; symbol is used.
     (-let* ((ppss (syntax-ppss))
@@ -309,9 +301,26 @@ but with the symbol at point replaced by symbol PLACEHOLDER."
         ;; The difference of two positions is zero-indexed, but buffer
         ;; positions are one-indexed.
         (goto-char (1+ (- start-pos start)))
-        (-let [(sym-start . sym-end) (bounds-of-thing-at-point 'symbol)]
-          (delete-region sym-start sym-end))
-        (insert (symbol-name placeholder))
+
+        (let* ((ppss (syntax-ppss))
+               (in-string (nth 3 ppss))
+               (in-comment (nth 4 ppss)))
+          (cond
+           (in-string
+            (delete-region
+             (nth 8 ppss)
+             (nth 3 ppss))
+            (insert (symbol-name placeholder)))
+           (in-comment
+            (delete-region
+             (nth 8 ppss)
+             (line-end-position))
+            (insert (format "''%s" placeholder)))
+           (t
+            (-let [(sym-start . sym-end) (bounds-of-thing-at-point 'symbol)]
+              (delete-region sym-start sym-end)
+              (insert (symbol-name placeholder))))))
+
         (buffer-string)))))
 
 (defun elisp-def--join-and (items)
