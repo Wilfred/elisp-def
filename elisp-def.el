@@ -473,8 +473,11 @@ positions of the form."
   (save-excursion
     (--dotimes depth
       (let* ((ppss (syntax-ppss))
+             (string-start-pos (nth 8 ppss))
              (enclosing-start-pos (nth 1 ppss)))
-        (goto-char enclosing-start-pos)))
+        (if string-start-pos
+            (goto-char string-start-pos)
+          (goto-char enclosing-start-pos))))
     (list (point)
           (progn
             (forward-sexp)

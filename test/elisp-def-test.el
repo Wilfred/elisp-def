@@ -107,6 +107,22 @@
       (should (elisp-def--sharp-quoted-p))
       (forward-char))))
 
+(ert-deftest elisp-def--enclosing-form ()
+  "Ensure we find the enclosing form position for both sexps and
+strings."
+  (elisp-def--with-temp-buffer "(foo (bar))"
+    (search-forward "b")
+    (should
+     (equal
+      (elisp-def--enclosing-form 1)
+      (list 6 11))))
+  (elisp-def--with-temp-buffer "(foo \"bar\")"
+    (search-forward "b")
+    (should
+     (equal
+      (elisp-def--enclosing-form 1)
+      (list 6 11)))))
+
 (ert-deftest elisp-def--namespace-at-point ()
   ;; If it's the head of a sexp, this is a function.
   (elisp-def--with-temp-buffer "(foo bar)"
