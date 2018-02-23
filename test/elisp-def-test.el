@@ -56,18 +56,18 @@
     (should
      (looking-at "x 1"))))
 
-(ert-deftest elisp-def--defun ()
-  "Ensure we go to the right position in defun forms."
-  (elisp-def--with-temp-buffer "(defun demo/foo ()
-  nil)
-\(defun demo/bar ()
-  (demo/foo))"
-    (eval-buffer)
-    (search-forward "(demo/foo)")
-    (backward-char)
-    (elisp-def)
-    (should
-     (looking-at "demo/foo"))))
+;; (ert-deftest elisp-def--defun ()
+;;   "Ensure we go to the right position in defun forms."
+;;   (elisp-def--with-temp-buffer "(defun demo/foo ()
+;;   nil)
+;; \(defun demo/bar ()
+;;   (demo/foo))"
+;;     (eval-buffer)
+;;     (search-forward "(demo/foo)")
+;;     (backward-char)
+;;     (elisp-def)
+;;     (should
+;;      (looking-at "demo/foo"))))
 
 (ert-deftest elisp-def--symbol-at-point ()
   ;; Symbol at point or quoted symbol.
