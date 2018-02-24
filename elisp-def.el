@@ -121,8 +121,9 @@ This is the function _slot_ of SYM, so SYM may be a function or macro."
                   (if primitive-p
                       (cdr (find-function-C-source sym path nil))
                     (cdr (find-function-search-for-symbol sym nil path)))))
-          (when (or (< pos (point-min))
-                    (> pos (point-max)))
+          (when (and pos
+                     (or (< pos (point-min))
+                         (> pos (point-max))))
             (widen)))))
      (t
       ;; Functions defined interactively may have an edebug property
