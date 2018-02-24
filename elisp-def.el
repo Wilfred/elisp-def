@@ -293,6 +293,8 @@ but with the symbol at point replaced by symbol PLACEHOLDER."
     ;; the source.
     (let ((src (buffer-substring-no-properties start end)))
       (with-temp-buffer
+        (delay-mode-hooks
+          (emacs-lisp-mode))
         (insert src)
         ;; Replace the original symbol at point with a placeholder, so
         ;; we can distinguish it from other occurrences of this symbol within
@@ -303,19 +305,20 @@ but with the symbol at point replaced by symbol PLACEHOLDER."
         (goto-char (1+ (- start-pos start)))
 
         (let* ((ppss (syntax-ppss))
-               (in-string (nth 3 ppss))
+               (string-comment-start (nth 8 ppss))
                (in-comment (nth 4 ppss)))
           (cond
-           (in-string
-            (delete-region
-             (nth 8 ppss)
-             (nth 3 ppss))
-            (insert (symbol-name placeholder)))
            (in-comment
-            (delete-region
-             (nth 8 ppss)
-             (line-end-position))
-            (insert (format "''%s" placeholder)))
+            (delete-region string-comment-start (line-end-position))
+            (insert (format "(elisp-def--comment %s)" placeholder)))
+           (string-comment-start
+            (let ((string-end
+                   (progn
+                     (goto-char string-comment-start)
+                     (forward-sexp)
+                     (point))))
+              (delete-region string-comment-start string-end)
+              (insert (format "(elisp-def--string %s)" placeholder))))
            (t
             (-let [(sym-start . sym-end) (bounds-of-thing-at-point 'symbol)]
               (delete-region sym-start sym-end)

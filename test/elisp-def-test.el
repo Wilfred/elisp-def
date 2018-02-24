@@ -269,7 +269,16 @@ strings."
      (equal
       (elisp-def--source-with-placeholder
        (point-min) (point-max) 'placeholder)
-      "(foo placeholder)"))))
+      "(foo placeholder)")))
+  ;; Point inside a string.
+  (elisp-def--with-temp-buffer "(foo \"bar\")"
+    (search-forward "b")
+
+    (should
+     (equal
+      (elisp-def--source-with-placeholder
+       (point-min) (point-max) 'placeholder)
+      "(foo (elisp-def--string placeholder))"))))
 
 (ert-deftest elisp-def--bound-syms--lambda ()
   (should
