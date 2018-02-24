@@ -486,7 +486,7 @@ sharp-quoted symbol."
           (save-excursion
             (when (looking-at (rx "#"))
               (forward-char))
-            (when (looking-at (rx "'"))
+            (when (looking-at (rx "'" symbol-start))
               (forward-char))
             (symbol-at-point)))
          (symbol-name (symbol-name sym))

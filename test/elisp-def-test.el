@@ -111,7 +111,14 @@
   ;; Backquoted symbols.
   (dolist (src '(";; `foo'" "\"`foo'\""))
     (elisp-def--with-temp-buffer src
+      ;; Find the symbol when point is at the start of the symbol.
       (search-forward "f")
+      (should
+       (eq
+        (elisp-def--symbol-at-point)
+        'foo))
+      ;; Find the symbol when point is at the end of the symbol.
+      (search-forward "oo")
       (should
        (eq
         (elisp-def--symbol-at-point)
