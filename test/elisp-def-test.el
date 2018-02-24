@@ -79,6 +79,16 @@
     (should
      (looking-at "bar)"))))
 
+(ert-deftest elisp-def--unquote-splice ()
+  "Ensure we go to the right position from a spliced symbol."
+  (elisp-def--with-temp-buffer "(defun demo/foo (bar)
+  (+ bar 1))"
+    (search-forward "bar")
+    (search-forward "bar")
+    (elisp-def)
+    (should
+     (looking-at "bar)"))))
+
 (ert-deftest elisp-def--docstring-parameter ()
   "Ensure we go to the right position from a docstring reference."
   (elisp-def--with-temp-buffer "(defun demo/foo (bar)
@@ -106,6 +116,15 @@
        (eq
         (elisp-def--symbol-at-point)
         'foo))))
+  ;; Unquoted splicted symbols.
+  (elisp-def--with-temp-buffer "`(foo ,@bar)"
+    (search-forward "b")
+    (let ((init-pos (point))
+          (sym (elisp-def--symbol-at-point)))
+      (should (eq sym 'bar))
+      ;; We also shouldn't have moved point (regression test).
+      (should (eq (point) init-pos))))
+
   ;; Docstring conventions, where FOO means a parameter named `foo'..
   (elisp-def--with-temp-buffer "\"Return FOO.\""
     (search-forward "F")

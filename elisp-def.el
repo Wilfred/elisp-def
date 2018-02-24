@@ -35,7 +35,6 @@
 (require 's)
 (require 'f)
 (require 'find-func)
-(require 'thingatpt)
 (require 'xref)
 (require 'ert)
 
@@ -334,7 +333,7 @@ but with the symbol at point replaced by symbol PLACEHOLDER."
               (delete-region string-comment-start string-end)
               (insert (format "(elisp-def--string %s)" placeholder))))
            (t
-            (-let [(sym-start . sym-end) (bounds-of-thing-at-point 'symbol)]
+            (-let [(sym-start sym-end) (elisp-def--symbol-bounds)]
               (delete-region sym-start sym-end)
               (insert (symbol-name placeholder))))))
 
@@ -458,6 +457,23 @@ We only find bindings from special forms, caller is responsible
 for macro-expanding."
   (nreverse (elisp-def--bound-syms-1 form sym nil)))
 
+(defun elisp-def--symbol-bounds ()
+  "Get the bounds of symbol at point.
+Ignores unquote-splicing punctuation."
+  (let (start end)
+    (save-excursion
+      (setq end (re-search-forward (rx symbol-end)))
+
+      (setq start (re-search-backward (rx symbol-start)))
+      ;; See if we're looking at ,@foo and move over the @ if so.
+      (condition-case nil
+          (save-excursion
+            (backward-char)
+            (when (looking-at ",@")
+              (setq start (1+ start))))
+        (beginning-of-buffer nil)))
+    (list start end)))
+
 (defun elisp-def--symbol-at-point ()
   "Get the symbol at point, even if we're on a quoted or
 sharp-quoted symbol."
@@ -472,6 +488,17 @@ sharp-quoted symbol."
          (ppss (syntax-ppss))
          (in-string (nth 3 ppss))
          (in-comment (nth 4 ppss)))
+    ;; If we're looking at ,@foo, the @ is not part of the
+    ;; symbol. Otherwise, it is.
+    (when (s-starts-with-p "@" symbol-name)
+      (save-excursion
+        (search-backward "@")
+        (condition-case nil
+            (backward-char)
+          (beginning-of-buffer nil))
+        (when (looking-at (rx ",@"))
+          (setq symbol-name (s-chop-prefix "@" symbol-name))
+          (setq sym (intern symbol-name)))))
     (when (or in-string in-comment)
       ;; Ignore a trailing . as it's common in docstrings but rare to
       ;; have a dot in symbols.
