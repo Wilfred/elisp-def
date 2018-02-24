@@ -171,6 +171,21 @@ Note that macros are in the same namespace as functions."
     (backward-sexp)
     (looking-at (rx "#'"))))
 
+(defun elisp-def--syntax-depth ()
+  "Return the number of nested parens at point, treating strings
+as just another level of nesting."
+  (let* ((ppss (syntax-ppss))
+         (string-start-pos (nth 8 ppss))
+         depth)
+    (when string-start-pos
+      (save-excursion
+        (goto-char string-start-pos)
+        (setq ppss (syntax-ppss))))
+    (setq depth (syntax-ppss-depth ppss))
+    (when string-start-pos
+      (setq depth (1+ depth)))
+    depth))
+
 (defun elisp-def--namespace-at-point ()
   "Is the symbol at point a function/macro, a global variable, a
 quoted variable, or a let-bound variable?
@@ -185,9 +200,8 @@ quoted variables, because they aren't being used at point."
 
     ;; Otherwise, macro expand the source at point and look at how the
     ;; symbol is used.
-    (-let* ((ppss (syntax-ppss))
-            ((form-start form-end) (elisp-def--enclosing-form
-                                    (syntax-ppss-depth ppss)))
+    (-let* (((form-start form-end) (elisp-def--enclosing-form
+                                    (elisp-def--syntax-depth)))
             (placeholder (elisp-def--fresh-placeholder))
             (src (elisp-def--source-with-placeholder form-start form-end placeholder))
             (form (condition-case nil
@@ -515,11 +529,10 @@ This an approximation: we incrementally expand macros around
 point. If outer macros rewrite inner forms, we may go to the
 wrong place. This should be very rare."
   (let* ((sym (elisp-def--symbol-at-point))
-         (placeholder (elisp-def--fresh-placeholder))
-         (ppss (syntax-ppss)))
+         (placeholder (elisp-def--fresh-placeholder)))
     (catch 'found
       ;; Start with the innermost form, and incrementally move outwards.
-      (--each (number-sequence 1 (syntax-ppss-depth ppss))
+      (--each (number-sequence 1 (elisp-def--syntax-depth))
         ;; For each enclosing form, see if it binds the symbol at point.
         (-let* (((start end) (elisp-def--enclosing-form it))
                 (src (elisp-def--source-with-placeholder

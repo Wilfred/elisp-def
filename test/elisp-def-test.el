@@ -69,6 +69,17 @@
 ;;     (should
 ;;      (looking-at "demo/foo"))))
 
+(ert-deftest elisp-def--docstring-parameter ()
+  "Ensure we go to the right position from a docstring reference.."
+  (elisp-def--with-temp-buffer "(defun demo/foo (bar)
+  \"See BAR.\"
+  nil)"
+    (eval-buffer)
+    (search-forward "See B")
+    (elisp-def)
+    (should
+     (looking-at "bar)"))))
+
 (ert-deftest elisp-def--symbol-at-point ()
   ;; Symbol at point or quoted symbol.
   (dolist (src '("foo" "#'foo"))
