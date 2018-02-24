@@ -69,8 +69,18 @@
 ;;     (should
 ;;      (looking-at "demo/foo"))))
 
+(ert-deftest elisp-def--parameter ()
+  "Ensure we go to the right position from a parameter."
+  (elisp-def--with-temp-buffer "(defun demo/foo (bar)
+  (+ bar 1))"
+    (search-forward "bar")
+    (search-forward "bar")
+    (elisp-def)
+    (should
+     (looking-at "bar)"))))
+
 (ert-deftest elisp-def--docstring-parameter ()
-  "Ensure we go to the right position from a docstring reference.."
+  "Ensure we go to the right position from a docstring reference."
   (elisp-def--with-temp-buffer "(defun demo/foo (bar)
   \"See BAR.\"
   nil)"
