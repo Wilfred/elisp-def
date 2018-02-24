@@ -30,6 +30,13 @@
      (goto-char (point-min))
      ,@body))
 
+(ert-deftest elisp-def--quoted-comment ()
+  "Ensure we go to the right position in let* forms."
+  (elisp-def--with-temp-buffer ";; `when'"
+    (search-forward "w")
+    ;; Smoke test: we should find the definition and not error.
+    (elisp-def)))
+
 (ert-deftest elisp-def--let* ()
   "Ensure we go to the right position in let* forms."
   (elisp-def--with-temp-buffer "(defun foo ()

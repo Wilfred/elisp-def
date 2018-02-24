@@ -211,12 +211,14 @@ quoted variables, because they aren't being used at point."
             (expanded-form (macroexpand-all form))
             (use (elisp-def--use-position expanded-form placeholder)))
       ;; If it's being used as a variable, see if it's let-bound.
-      (when (eq use 'variable)
+      (when (memq use (list 'variable 'string-or-comment))
         (let* ((sym (elisp-def--symbol-at-point))
                (bound-syms (elisp-def--bound-syms
                             expanded-form placeholder)))
           (when (memq sym bound-syms)
-            (setq use 'bound))))
+            (setq use 'bound))
+          (when (eq use 'string-or-comment)
+            (setq use 'quoted))))
       use)))
 
 (defun elisp-def--use-position (form sym &optional quoted)
@@ -234,6 +236,11 @@ Assumes FORM has been macro-expanded."
       nil))
    ((consp form)
     (cond
+     ;; The placeholder SYM was originally in a string or comment.
+     ((or (equal `(elisp-def--string ,sym) form)
+          (equal `(elisp-def--comment ,sym) form))
+      'string-or-comment)
+
      ;; Used for quoting symbols that are functions. This is used in
      ;; some macros, such as `should'.
      ((equal `(function ,sym) form)
