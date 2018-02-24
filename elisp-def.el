@@ -5,6 +5,7 @@
 
 ;; Author: Wilfred Hughes <me@wilfred.me.uk>
 ;; Keywords: lisp
+;; Package-Requires: ((dash "2.12.0") (f "0.19.0") (s "1.11.0") (emacs "24.3"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
