@@ -1,4 +1,4 @@
-# elisp-def [![Build Status](https://travis-ci.org/Wilfred/elisp-def.svg?branch=master)](https://travis-ci.org/Wilfred/elisp-def)
+# elisp-def [![Build Status](https://travis-ci.org/Wilfred/elisp-def.svg?branch=master)](https://travis-ci.org/Wilfred/elisp-def) [![Coverage Status](https://coveralls.io/repos/github/Wilfred/elisp-def/badge.svg?branch=master)](https://coveralls.io/github/Wilfred/elisp-def?branch=master)
 
 Go to the definition of the symbol at point. Supports global
 definitions, local definitions, and even macro-heavy code!
