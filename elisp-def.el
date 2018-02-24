@@ -234,6 +234,10 @@ Assumes FORM has been macro-expanded."
       nil))
    ((consp form)
     (cond
+     ;; Used for quoting symbols that are functions. This is used in
+     ;; some macros, such as `should'.
+     ((equal `(function ,sym) form)
+      'function)
      ;; Lambda parameters are variable definitions.
      ((and (eq (car form) 'lambda)
            (memq sym (cadr form)))

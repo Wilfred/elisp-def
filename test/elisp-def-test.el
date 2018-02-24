@@ -287,6 +287,12 @@ strings."
    (eq (elisp-def--use-position
         '(cond (bar 1) ((foo) 1))
         'foo)
+       'function))
+  ;; Handle macros that expand to a (function foo) form.
+  (should
+   (eq (elisp-def--use-position
+        (macroexpand-all '(should (foo)))
+        'foo)
        'function)))
 
 (ert-deftest elisp-def--source-with-placeholder ()
