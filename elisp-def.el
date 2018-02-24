@@ -23,7 +23,7 @@
 ;;; Commentary:
 
 ;; Find the definition of the symbol at point,
-;; intelligently. Understands namespaces, macros, libraries and local
+;; intelligently.  Understands namespaces, macros, libraries and local
 ;; bindings.
 ;;
 ;; See full docs at https://github.com/Wilfred/elisp-def
@@ -770,7 +770,7 @@ Or for let-bound variables:
     (define-key map (kbd "M-.") #'elisp-def)
     (define-key map (kbd "M-,") #'xref-pop-marker-stack)
     map)
-  "Keymap used in `elisp-def-mode'.")
+  "Keymap used in command `elisp-def-mode'.")
 
 (provide 'elisp-def)
 ;;; elisp-def.el ends here
