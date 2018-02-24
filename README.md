@@ -9,6 +9,16 @@ definitions, local definitions, and even macro-heavy code!
 heuristics where that's not possible. It should work 99% of the time,
 so please file bugs if it can't find definitions for your code.
 
+## Installation
+
+Install from MELPA, then add the following to your Emacs
+configuration:
+
+``` emacs-lisp
+(dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
+  (add-hook hook #'elisp-def-mode))
+```
+
 ## Global Definitions
 
 `elisp-def` will find the definition of global functions and global

@@ -771,8 +771,5 @@ Or for let-bound variables:
     map)
   "Keymap used in `elisp-def-mode'.")
 
-(dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
-  (add-hook hook #'elisp-def-mode))
-
 (provide 'elisp-def)
 ;;; elisp-def.el ends here
