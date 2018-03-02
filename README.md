@@ -149,15 +149,16 @@ symbols or backquoted symbols.
   ;; `elisp-def' can find demo/foo even when point is on the #.
   (funcall #'demo/foo 1)
   ;; `elisp-def' on demo/foo below will find the function.
+  ;;
   ;; See `demo/foo' for more information.
-  (1+ bar))
+  nil)
 
 (defun demo/baz (foo)
   ;; `elisp-def' understands that @ is not part of foo here.
   `(blah ,@foo))
 ```
 
-When it finds the symbol, it will also temporarily highlight it for
+When it finds the symbol, elisp-def will also temporarily highlight it for
 visibility.
 
 ## Caveats
