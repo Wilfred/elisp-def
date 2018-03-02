@@ -76,6 +76,12 @@
 ;;     (should
 ;;      (looking-at "demo/foo"))))
 
+(ert-deftest elisp-def--face ()
+  "Smoke test for finding the definition of faces."
+  (elisp-def--with-temp-buffer "'font-lock-regexp-grouping-construct"
+    (search-forward "f")
+    (elisp-def)))
+
 (ert-deftest elisp-def--parameter ()
   "Ensure we go to the right position from a parameter."
   (elisp-def--with-temp-buffer "(defun demo/foo (bar)
@@ -238,7 +244,13 @@ strings."
 
     (should
      (eq (elisp-def--namespace-at-point)
-         'library))))
+         'library)))
+  ;; If it's just a quoted symbol, we can't infer anything about it.
+  (elisp-def--with-temp-buffer "'foo"
+    (search-forward "f")
+    (should
+     (eq (elisp-def--namespace-at-point)
+         'quoted))))
 
 (ert-deftest elisp-def--use-position ()
   (should
