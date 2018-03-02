@@ -27,6 +27,14 @@
 ;; bindings.
 ;;
 ;; See full docs at https://github.com/Wilfred/elisp-def
+
+;;; Usage:
+
+;; Once this file is installed (e.g. with MELPA), add the following to
+;; your Emacs configuration:
+;;
+;; (dolist (hook '(emacs-lisp-mode-hook ielm-mode-hook))
+;;   (add-hook hook #'elisp-def-mode))
 ;;
 ;; TODO: fonts
 
