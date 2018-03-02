@@ -1,7 +1,7 @@
 ;;; elisp-def.el --- macro-aware go-to-definition for elisp  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018  Wilfred Hughes
-;; Version: 0.1
+;; Version: 1.0
 
 ;; Author: Wilfred Hughes <me@wilfred.me.uk>
 ;; Keywords: lisp
