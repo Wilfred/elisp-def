@@ -222,3 +222,8 @@ symbol disappears entirely.
 
 The fine folks on `#emacs` for answering my questions on elisp
 esoterica, particularly Wasamasa.
+
+The [compliment](https://github.com/alexander-yakushev/compliment)
+library for Clojure completion has a notion
+of [context](https://github.com/alexander-yakushev/compliment/wiki/Context)
+which is very similar to how elisp-def extracts and analyses forms.
