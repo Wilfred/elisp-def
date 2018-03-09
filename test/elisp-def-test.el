@@ -245,12 +245,21 @@ strings."
     (should
      (eq (elisp-def--namespace-at-point)
          'library)))
+
   ;; If it's just a quoted symbol, we can't infer anything about it.
   (elisp-def--with-temp-buffer "'foo"
     (search-forward "f")
     (should
      (eq (elisp-def--namespace-at-point)
-         'quoted))))
+         'quoted)))
+
+  ;; We can't infer anything about symbols in comments either.
+  (dolist (src '(";; foo" ";; `foo'"))
+    (elisp-def--with-temp-buffer src
+      (search-forward "f")
+      (should
+       (eq (elisp-def--namespace-at-point)
+           'quoted)))))
 
 (ert-deftest elisp-def--use-position ()
   (should

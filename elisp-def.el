@@ -206,6 +206,50 @@ as just another level of nesting."
       (setq depth (1+ depth)))
     depth))
 
+(defun elisp-def--top-level-pos ()
+  "Return the start and end positions of the form surrounding
+point."
+  (let* ((ppss (syntax-ppss))
+         (in-comment (nth 4 ppss))
+         (string-comment-start (nth 8 ppss))
+         start-pos end-pos)
+    (save-excursion
+      (if in-comment
+          ;; If we're inside a comment, just return the comment
+          ;; contents.
+          (progn
+            (setq start-pos string-comment-start)
+            (setq end-pos (line-end-position)))
+
+        ;; If we're not in a form, we might be in a top-level symbol,
+        ;; so move to the beginning.
+        (while (and
+                (looking-at (rx (or (syntax word) (syntax symbol))))
+                (not (looking-at (rx symbol-start))))
+          (backward-char))
+        ;; Move past any top-level quotes.
+        (when (eq (char-before) ?')
+          (backward-char))
+        (when (eq (char-before) ?`)
+          (backward-char))
+        (when (eq (char-before) ?#)
+          (backward-char))
+        
+        ;; If we're in a string, move outside of it.
+        (when string-comment-start
+          (goto-char string-comment-start))
+        ;; We can now move out, in sexp increments, until we're
+        ;; outside of the top-level form.
+        (while (nth 1 (syntax-ppss))
+          (goto-char (nth 1 (syntax-ppss))))
+
+        ;; We're now at beginning of the outer sexp, return its
+        ;; position.
+        (setq start-pos (point))
+        (forward-sexp)
+        (setq end-pos (point)))
+      (list start-pos end-pos))))
+
 (defun elisp-def--namespace-at-point ()
   "Is the symbol at point a function/macro, a global variable, a
 quoted variable, or a let-bound variable?
@@ -220,8 +264,7 @@ quoted variables, because they aren't being used at point."
 
     ;; Otherwise, macro expand the source at point and look at how the
     ;; symbol is used.
-    (-let* (((form-start form-end) (elisp-def--enclosing-form
-                                    (elisp-def--syntax-depth)))
+    (-let* (((form-start form-end) (elisp-def--top-level-pos))
             (placeholder (elisp-def--fresh-placeholder))
             (src (elisp-def--source-with-placeholder form-start form-end placeholder))
             (form (condition-case nil
