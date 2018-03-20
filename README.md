@@ -227,3 +227,7 @@ The [compliment](https://github.com/alexander-yakushev/compliment)
 library for Clojure completion has a notion
 of [context](https://github.com/alexander-yakushev/compliment/wiki/Context)
 which is very similar to how elisp-def extracts and analyses forms.
+
+Hacklang has a
+[similar notion of a placeholder](https://github.com/facebook/hhvm/blob/master/hphp/hack/man/hh_client.1#L152-L156) for
+analysing completions at a point in the code.
