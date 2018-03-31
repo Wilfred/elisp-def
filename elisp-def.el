@@ -182,6 +182,8 @@ Note that macros are in the same namespace as functions."
       (push 'function result))
     (when (facep sym)
       (push 'face result))
+    (when (memq sym features)
+      (push 'library result))
     result))
 
 (defun elisp-def--sharp-quoted-p ()

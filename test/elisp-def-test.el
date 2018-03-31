@@ -482,6 +482,18 @@ strings."
     (elisp-def--find-function 'no-such-func)
     (list nil nil))))
 
+(ert-deftest elisp-def--defined-in ()
+  (should
+   (equal (elisp-def--defined-in 'funcall)
+          (list 'function)))
+  (require 'cc-mode)
+  (should
+   (equal (elisp-def--defined-in 'c-version)
+          (list 'function 'variable)))
+  (should
+   (equal (elisp-def--defined-in 'eldoc)
+          (list 'library))))
+
 ;; TODO: test primitive functions.
 
 ;;; elisp-def-test.el ends here
