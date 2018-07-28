@@ -63,6 +63,13 @@
     (should
      (looking-at "x 1"))))
 
+(ert-deftest elisp-def--invalid-code ()
+  "Ensure we can handle unfinished code that can't be macro-expanded."
+  (elisp-def--with-temp-buffer "(let ((x 1))\n  (setf x))"
+    (search-forward "setf x")
+    (backward-char)
+    (elisp-def)))
+
 ;; (ert-deftest elisp-def--defun ()
 ;;   "Ensure we go to the right position in defun forms."
 ;;   (elisp-def--with-temp-buffer "(defun demo/foo ()

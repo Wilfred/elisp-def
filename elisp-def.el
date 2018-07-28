@@ -252,6 +252,19 @@ point."
         (setq end-pos (point)))
       (list start-pos end-pos))))
 
+(defun elisp-def--macroexpand-try (form)
+  "Try to fully macroexpand FORM.
+If it fails, attempt to partially macroexpand FORM."
+  (catch 'result
+    (ignore-errors
+      ;; Happy path: we can fully expand the form.
+      (throw 'result (macroexpand-all form)))
+    (ignore-errors
+      ;; Attempt one level of macroexpansion.
+      (throw 'result (macroexpand-1 form)))
+    ;; Fallback: just return the original form.
+    form))
+
 (defun elisp-def--namespace-at-point ()
   "Is the symbol at point a function/macro, a global variable, a
 quoted variable, or a let-bound variable?
@@ -273,7 +286,7 @@ quoted variables, because they aren't being used at point."
                       (read src)
                     (end-of-file nil)))
             ;; TODO: what if SYM disappears after expanding? E.g. inside rx.
-            (expanded-form (macroexpand-all form))
+            (expanded-form (elisp-def--macroexpand-try form))
             (use (elisp-def--use-position expanded-form placeholder)))
       ;; If it's being used as a variable, see if it's let-bound.
       (when (memq use (list 'variable 'string-or-comment))
@@ -644,7 +657,7 @@ wrong place. This should be very rare."
                 (src (elisp-def--source-with-placeholder
                       start end placeholder))
                 (form (read src))
-                (expanded-form (macroexpand-all form))
+                (expanded-form (elisp-def--macroexpand-try form))
                 (bound-syms (elisp-def--bound-syms
                              expanded-form placeholder)))
           ;; If this enclosing form introduces a binding for the
