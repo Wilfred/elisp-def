@@ -132,13 +132,15 @@ This is the function _slot_ of SYM, so SYM may be a function or macro."
 
         ;; Based on `find-function-noselect'.
         (with-current-buffer buf
-          ;; If the symbol is defined outside the current range, widen, otherwise preserve narrowing.
+          ;; Temporarily widen to search the whole buffer.
           (save-restriction
             (widen)
             (setq pos
                   (if primitive-p
                       (cdr (find-function-C-source sym path nil))
                     (cdr (find-function-search-for-symbol sym nil path)))))
+          ;; If the definition was found outside of the currently
+          ;; narrowed region, widen.
           (when (and pos
                      (or (< pos (point-min))
                          (> pos (point-max))))
