@@ -231,3 +231,11 @@ which is very similar to how elisp-def extracts and analyses forms.
 Hacklang has a
 [similar notion of a placeholder](https://github.com/facebook/hhvm/blob/master/hphp/hack/man/hh_client.1#L152-L156) for
 analysing completions at a point in the code.
+
+## License
+
+GPLv3+.
+
+I am providing code in the repository to you under an open source
+license. Because this is my personal repository, the license you
+receive to my code is from me and not my employer.
