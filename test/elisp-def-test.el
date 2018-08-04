@@ -501,6 +501,12 @@ strings."
    (equal (elisp-def--defined-in 'eldoc)
           (list 'library))))
 
+(ert-deftest elisp-def--end-of-buffer ()
+  "Don't crash if point is at the end of the buffer."
+  (elisp-def--with-temp-buffer "c-basic-offset"
+    (goto-char (point-max))
+    (elisp-def)))
+
 ;; TODO: test primitive functions.
 
 ;;; elisp-def-test.el ends here

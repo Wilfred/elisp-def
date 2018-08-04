@@ -554,9 +554,11 @@ for macro-expanding."
 Ignores unquote-splicing punctuation."
   (let (start end)
     (save-excursion
-      (setq end (re-search-forward (rx symbol-end)))
+      (setq end (re-search-forward
+                 (rx (or symbol-end buffer-end))))
 
-      (setq start (re-search-backward (rx symbol-start)))
+      (setq start (re-search-backward
+                   (rx (or symbol-start buffer-start))))
       ;; See if we're looking at ,@foo and move over the @ if so.
       (condition-case nil
           (save-excursion
