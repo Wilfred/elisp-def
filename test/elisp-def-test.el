@@ -178,8 +178,8 @@
   "Ensure we find the enclosing form for
 variables that are defined by macros."
   (elisp-def--with-temp-buffer
-      "(setq elisp-def-mode-map nil)"
-    (search-forward "map")
+      "(setq elisp-def-mode-hook nil)"
+    (search-forward "elisp-def-m")
     (elisp-def)))
 
 (ert-deftest elisp-def--fn-from-expansion ()

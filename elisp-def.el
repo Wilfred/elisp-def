@@ -184,7 +184,7 @@ Assumes SYM is a variable, not a function."
                     (var-def-p
                      (lambda (sexp)
                        (and (eq (car-safe sexp) 'defvar)
-                            (eq (cdr sexp) sym))))
+                            (eq (car-safe (cdr sexp)) sym))))
                     (fn-def-p
                      (lambda (sexp)
                        ;; `defun' ultimately expands to `defalias'.
