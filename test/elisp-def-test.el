@@ -191,13 +191,13 @@ variables that are defined by macros."
 (ert-deftest elisp-def--fn-from-expansion ()
   "Ensure we find the enclosing form for
 functions that are defined by macros."
-  (require 'tramp)
+  (require 'timer)
   (elisp-def--with-temp-buffer
-      "(make-tramp-file-name nil)"
-    (search-forward "make")
+      "(timer-create nil)"
+    (search-forward "cre")
     (elisp-def)
     (should
-     (looking-at "tramp-file-name"))))
+     (looking-at "timer-create"))))
 
 (ert-deftest elisp-def--enclosing-form ()
   "Ensure we find the enclosing form position for both sexps and
