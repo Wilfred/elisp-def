@@ -89,6 +89,12 @@
     (search-forward "f")
     (elisp-def)))
 
+(ert-deftest elisp-def--feature ()
+  "Smoke test for finding features."
+  (elisp-def--with-temp-buffer "(require 'elisp-mode)"
+    (search-forward "elisp")
+    (elisp-def)))
+
 (ert-deftest elisp-def--parameter ()
   "Ensure we go to the right position from a parameter."
   (elisp-def--with-temp-buffer "(defun demo/foo (bar)
