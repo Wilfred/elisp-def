@@ -2,6 +2,9 @@
 
 Added support for finding faces.
 
+Added support for finding mode hooks and functions defined with
+`defstruct`.
+
 Fixed an issue with symbols in comments being assumed to be variables
 (they may be functions or variables).
 

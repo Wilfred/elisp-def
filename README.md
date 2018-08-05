@@ -55,7 +55,10 @@ and jumps to the correct definition.
   (setq c-version t))
 ```
 
-`elisp-def` understands macros too.
+## Macro Awareness
+
+`elisp-def` understands macros, so it can accurately detect function
+references.
 
 ``` emacs-lisp
 (require 'dash)
@@ -70,6 +73,22 @@ and jumps to the correct definition.
        ;; `elisp-def' knows that this is a function, even though there are
        ;; no parens.
        demo/foo))
+```
+
+It can also understand macros that define functions or variables.
+
+``` emacs-lisp
+(define-derived-mode demo/foo-mode fundamental-mode "demo")
+
+;; `elisp-def' will expand macros to discover where major mode hooks
+;; are defined.
+demo/foo-mode-hook
+
+(cl-defstruct demo/point x y)
+
+;; `elisp-def' can find this function even though the defstruct
+;; call doesn't contain this symbol name.
+(make-demo/point 1 2)
 ```
 
 ## Find Libraries

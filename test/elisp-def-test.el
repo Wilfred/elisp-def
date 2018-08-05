@@ -174,6 +174,25 @@
       (should (elisp-def--sharp-quoted-p))
       (forward-char))))
 
+(ert-deftest elisp-def--var-from-expansion ()
+  "Ensure we find the enclosing form for
+variables that are defined by macros."
+  (elisp-def--with-temp-buffer
+      "(setq elisp-def-mode-map nil)"
+    (search-forward "map")
+    (elisp-def)))
+
+(ert-deftest elisp-def--fn-from-expansion ()
+  "Ensure we find the enclosing form for
+functions that are defined by macros."
+  (require 'tramp)
+  (elisp-def--with-temp-buffer
+      "(make-tramp-file-name nil)"
+    (search-forward "make")
+    (elisp-def)
+    (should
+     (looking-at "tramp-file-name"))))
+
 (ert-deftest elisp-def--enclosing-form ()
   "Ensure we find the enclosing form position for both sexps and
 strings."
@@ -506,6 +525,19 @@ strings."
   (elisp-def--with-temp-buffer "c-basic-offset"
     (goto-char (point-max))
     (elisp-def)))
+
+(ert-deftest elisp-def--tree-any-p ()
+  (should (elisp-def--tree-any-p #'numberp '(1 2 3)))
+  (should (elisp-def--tree-any-p #'numberp '(nil "foo" ((1)))))
+  (should (not (elisp-def--tree-any-p #'numberp '(nil "foo" ((:stuff))))))
+  (should
+   (elisp-def--tree-any-p
+    (lambda (x) (eq (car-safe x) 'foo))
+    '(x (foo 1))))
+  (should
+   (not (elisp-def--tree-any-p
+         (lambda (x) (eq (car-safe x) 'foo))
+         '(x (bar 1))))))
 
 ;; TODO: test primitive functions.
 

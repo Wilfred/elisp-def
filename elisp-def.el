@@ -154,7 +154,51 @@ This is the function _slot_ of SYM, so SYM may be a function or macro."
                         edebug-info)]
           (setq buf (marker-buffer marker))
           (setq pos (marker-position marker))))))
+    (when (and buf (not pos))
+      (setq pos (elisp-def--find-by-macroexpanding buf sym t)))
     (list buf pos)))
+
+(defun elisp-def--tree-any-p (pred tree)
+  "Walk TREE, applying PRED to every subtree.
+Return t if PRED ever returns t."
+  (cond
+   ((null tree) nil)
+   ((funcall pred tree) t)
+   ((not (consp tree)) nil)
+   (t (or
+       (elisp-def--tree-any-p pred (car tree))
+       (elisp-def--tree-any-p pred (cdr tree))))))
+
+(defun elisp-def--find-by-macroexpanding (buf sym callable-p)
+  "Search BUF for the definition of SYM by macroexpanding
+interesting forms in BUF.
+
+Assumes SYM is a variable, not a function."
+  (catch 'found
+    (with-current-buffer buf
+      (save-excursion
+        (goto-char (point-min))
+        (condition-case nil
+            (while t
+              (let ((form (read (current-buffer)))
+                    (var-def-p
+                     (lambda (sexp)
+                       (and (eq (car-safe sexp) 'defvar)
+                            (eq (cdr sexp) sym))))
+                    (fn-def-p
+                     (lambda (sexp)
+                       ;; `defun' ultimately expands to `defalias'.
+                       (and (eq (car-safe sexp) 'defalias)
+                            (equal (car-safe (cdr sexp)) `(quote ,sym))))))
+                (setq form (elisp-def--macroexpand-try form))
+
+                (when (elisp-def--tree-any-p
+                       (if callable-p fn-def-p var-def-p)
+                       form)
+                  ;; `read' puts point at the end of the form, so go
+                  ;; back to the start.
+                  (throw 'found (scan-sexps (point) -1)))))
+          (end-of-file nil))))))
 
 (defun elisp-def--find-variable (sym)
   "Find the buffer and position where variable SYM is defined."
@@ -169,6 +213,10 @@ This is the function _slot_ of SYM, so SYM may be a function or macro."
       ;; get an error about not finding source. Try
       ;; `default-tab-width' against Emacs trunk.
       (error nil))
+    ;; If we found the containing buffer, but not the symbol, attempt
+    ;; to find it by macroexpanding interesting forms.
+    (when (and buf (not pos))
+      (setq pos (elisp-def--find-by-macroexpanding buf sym nil)))
     (list buf pos)))
 
 (defun elisp-def--defined-in (sym)
@@ -770,6 +818,42 @@ Or for let-bound variables:
       ;; for many macros like `destructuring-bind'.
       (goto-char form-start))))
 
+(defun elisp-def--show-occurrence (sym)
+  "Go to and highlight SYM in the form after point.
+Point is placed on the first character of SYM.
+
+If SYM isn't present, use the most relevant symbol."
+  (let ((form-end-pos (scan-sexps (point) 1))
+        sym-end-pos)
+    (when
+        (re-search-forward
+         (rx-to-string `(seq symbol-start ,(symbol-name sym) symbol-end))
+         form-end-pos
+         t)
+      (setq sym-end-pos (point)))
+
+    ;; If we couldn't find the symbol, use the second symbol in the
+    ;; form. This is the best we can do when the symbol doesn't occur
+    ;; (e.g. a foo-mode-hook variable or a make-foo function from a
+    ;; struct).
+    (unless sym-end-pos
+      ;; Move past the opening paren.
+      (forward-char)
+      ;; Move past the first sexp.
+      (forward-sexp)
+      (forward-char)
+      ;; Move the second symbol.
+      (setq
+       sym-end-pos
+       (re-search-forward (rx symbol-end) form-end-pos t)))
+
+    ;; Put point on the first character of the symbol.
+    (goto-char (scan-sexps sym-end-pos -1))
+
+    ;; TODO: this doesn't work properly in c-mode buffers. It works for
+    ;; e.g. `point', but not for `re-search-forward'.
+    (elisp-def--flash-region (point) sym-end-pos)))
+
 ;;;###autoload
 (defun elisp-def ()
   "Go to the definition of the symbol at point."
@@ -829,20 +913,7 @@ Or for let-bound variables:
     (when (eq namespace 'bound)
       (elisp-def--go-to-bind-definition (point) init-pos))
 
-    ;; Move to the first occurrence of SYM after point.
-    (let (sym-end-pos)
-      (when
-          (re-search-forward
-           (rx-to-string `(seq symbol-start ,(symbol-name sym) symbol-end))
-           nil
-           t)
-        (setq sym-end-pos (point))
-        (backward-sexp))
-
-      (when sym-end-pos
-        ;; TODO: this doesn't work properly in c-mode buffers. It
-        ;; works for e.g. `point', but not for `re-search-forward'.
-        (elisp-def--flash-region (point) sym-end-pos)))))
+    (elisp-def--show-occurrence sym)))
 
 (defvar elisp-def-mode-map
   (let ((map (make-sparse-keymap)))
