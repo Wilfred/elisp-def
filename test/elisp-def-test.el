@@ -2,6 +2,14 @@
 
 (require 'elisp-def)
 
+;; Travis is currently segfaulting. Try increasing execution limits.
+(when (getenv "TRAVIS")
+  (message "Updating recursion limits from: max-specpdl-size: %s max-lisp-eval-depth: %s "
+           max-specpdl-size
+           max-lisp-eval-depth)
+  (setq max-specpdl-size 2500)
+  (setq max-lisp-eval-depth 1000))
+
 (ert-deftest elisp-def--let-bind-index ()
   (should
    (= 2
