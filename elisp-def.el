@@ -349,6 +349,15 @@ quoted variables, because they aren't being used at point."
             (setq use 'quoted))))
       use)))
 
+(defun elisp-def--proper-list-p (val)
+  "Is VAL a proper list?"
+  (if (fboundp 'proper-list-p)
+      ;; Function was added in Emacs master:
+      ;; http://git.savannah.gnu.org/cgit/emacs.git/commit/?id=2fde6275b69fd113e78243790bf112bbdd2fe2bf
+      (with-no-warnings (proper-list-p val))
+    ;; Emacs 26 only had this function in ERT.
+    (with-no-warnings (ert--proper-list-p val))))
+
 (defun elisp-def--use-position (form sym &optional quoted)
   "Is SYM being used as a function, a global variable, a
 library/feature, a bound variable definition, or a quoted symbol
@@ -402,7 +411,7 @@ Assumes FORM has been macro-expanded."
       (if quoted 'quoted 'function))
      ;; See if this is a quoted form that contains SYM.
      ((eq (car form) 'quote)
-      (if (ert--proper-list-p (cdr form))
+      (if (elisp-def--proper-list-p (cdr form))
           (--any (elisp-def--use-position it sym t) (cdr form))
         (elisp-def--use-position (cdr form) sym t)))
      ;; (cond (x 1) ((foo-p) 2))
@@ -413,7 +422,7 @@ Assumes FORM has been macro-expanded."
         (--any (elisp-def--use-position it sym quoted) expressions)))
      ;; Recurse on the form to see if any arguments contain SYM.
      (t
-      (if (ert--proper-list-p form)
+      (if (elisp-def--proper-list-p form)
           (--any (elisp-def--use-position it sym quoted) form)
         (or
          (elisp-def--use-position (car form) sym quoted)
@@ -585,7 +594,7 @@ for macro-expanding."
        ;; contains SYM. We know that it introduces no new bindings. It is
        ;; actually possible to introduce a global with `setq', but we
        ;; ignore that.
-       ((ert--proper-list-p form)
+       ((elisp-def--proper-list-p form)
         (--each form
           (-when-let (accum (elisp-def--bound-syms-1 it sym accum))
             (throw 'done accum))))))))
