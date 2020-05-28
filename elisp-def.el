@@ -64,7 +64,9 @@ source code: they have e.g. org.elc but no org.el."
 (defun elisp-def--primitive-p (sym callable-p)
   "Return t if SYM is defined in C."
   (if callable-p
-      (subrp (indirect-function sym))
+      (if (fboundp 'subr-primitive-p)
+          (subr-primitive-p (indirect-function sym))
+        (subrp (indirect-function sym)))
     (let ((filename (find-lisp-object-file-name sym 'defvar)))
       (or (eq filename 'C-source)
           (and (stringp filename)
