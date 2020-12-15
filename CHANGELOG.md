@@ -1,4 +1,8 @@
-# v1.1 (not yet released)
+# v1.2 (not yet released)
+
+No changes yet.
+
+# v1.1
 
 Added support for finding faces.
 
