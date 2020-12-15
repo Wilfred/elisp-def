@@ -15,6 +15,8 @@ which isn't true on unfinished code.
 Fixed a crash when starting from a symbol that was at the very start
 or end of a buffer.
 
+Fixed several issues when going to definitions of primitive functions.
+
 # v1.0
 
 Initial release.
