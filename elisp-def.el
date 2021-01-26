@@ -837,7 +837,7 @@ If SYM isn't present, use the most relevant symbol."
   (save-match-data
     (let (sym-end-pos)
       (cond
-       ((or (derived-mode-p 'c-mode) (derived-mode-p 'c++-mode))
+       ((or (derived-mode-p 'c-mode) (derived-mode-p 'c++-mode) (derived-mode-p 'objc-mode))
         ;; move to the quoted function/variable name string; the bound is after
         ;; two sexps: one DEFUN/DEFVAR/... followed by a parenthesised list of
         ;; arguments.
