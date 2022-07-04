@@ -946,7 +946,8 @@ If SYM isn't present, use the most relevant symbol."
   "Minor mode for finding definitions with `elisp-def'.
 
 \\{elisp-def-mode-map}"
-  nil " ElispDef" elisp-def-mode-map)
+  :lighter " ElispDef"
+  :keymap elisp-def-mode-map)
 
 (provide 'elisp-def)
 ;;; elisp-def.el ends here
