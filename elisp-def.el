@@ -907,7 +907,9 @@ If SYM isn't present, use the most relevant symbol."
 
     ;; Push the current position, so we can go back.
     (xref-push-marker-stack)
-
+    (when (not (region-active-p))
+      (push-mark))
+	
     (-let [(buf pos)
            (cond
             ((eq namespace 'bound)
