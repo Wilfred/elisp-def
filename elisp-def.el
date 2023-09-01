@@ -939,7 +939,9 @@ If SYM isn't present, use the most relevant symbol."
 (defvar elisp-def-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "M-.") #'elisp-def)
-    (define-key map (kbd "M-,") #'xref-pop-marker-stack)
+    (if (functionp 'xref-go-back)
+        (define-key map (kbd "M-,") #'xref-go-back)
+      (define-key map (kbd "M-,") #'xref-pop-marker-stack))
     map)
   "Keymap used in command `elisp-def-mode'.")
 
