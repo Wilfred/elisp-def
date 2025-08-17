@@ -532,7 +532,7 @@ strings."
           (list 'function 'variable)))
   (should
    (equal (elisp-def--defined-in 'eldoc)
-          (list 'library))))
+          (list 'library 'function))))
 
 (ert-deftest elisp-def--end-of-buffer ()
   "Don't crash if point is at the end of the buffer."
