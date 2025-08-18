@@ -1,6 +1,6 @@
-# v1.2 (not yet released)
+# v1.2
 
-No changes yet.
+Fixed failing test.
 
 # v1.1
 
