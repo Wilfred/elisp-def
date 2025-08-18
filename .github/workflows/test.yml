@@ -1,0 +1,26 @@
+name: Run test suite
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        emacs_version:
+          - '28.1'
+          - '29.1'
+          - '30.1'
+
+    steps:
+    - uses: purcell/setup-emacs@master
+      with:
+        version: ${{ matrix.emacs_version }}
+    - uses: conao3/setup-cask@master
+
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies with Cask
+      run: cask install
+
+    - name: Run tests
+      run: cask exec ert-runner
